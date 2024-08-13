@@ -4,14 +4,15 @@
 
 数据质量任务是用于检查数据在集成、处理过程中的数据准确性。本版本的数据质量任务包括单表检查、单表自定义SQL检查、多表准确性以及两表值比对。数据质量任务的运行环境为Spark2.4.0，其他版本尚未进行过验证，用户可自行验证。
 
-- 数据质量任务的执行逻辑如下：
+数据质量任务的执行逻辑如下：
 
-> 用户在界面定义任务，用户输入值保存在`TaskParam`中
-> 运行任务时，`Master`会解析`TaskParam`，封装`DataQualityTask`所需要的参数下发至`Worker。
-> Worker`运行数据质量任务，数据质量任务在运行结束之后将统计结果写入到指定的存储引擎中，当前数据质量任务结果存储在`dolphinscheduler`的`t_ds_dq_execute_result`表中
-> `Worker`发送任务结果给`Master`，`Master`收到`TaskResponse`之后会判断任务类型是否为`DataQualityTask`，如果是的话会根据`taskInstanceId`从`t_ds_dq_execute_result`中读取相应的结果，然后根据用户配置好的检查方式，操作符和阈值进行结果判断，如果结果为失败的话，会根据用户配置好的的失败策略进行相应的操作，告警或者中断
->
-  ## 注意事项
+- 用户在界面定义任务，用户输入值保存在`TaskParam`中
+- 运行任务时，`Master`会解析`TaskParam`，封装`DataQualityTask`所需要的参数下发至`Worker。
+- Worker`运行数据质量任务，数据质量任务在运行结束之后将统计结果写入到指定的存储引擎中，当前数据质量任务结果存储在`dolphinscheduler`的`t_ds_dq_execute_result`表中
+- `Worker`发送任务结果给`Master`，`Master`收到`TaskResponse`之后会判断任务类型是否为`DataQualityTask`，如果是的话会根据`taskInstanceId`从`t_ds_dq_execute_result`中读取相应的结果，然后根据用户配置好的检查方式，操作符和阈值进行结果判断，如果结果为失败的话，会根据用户配置好的的失败策略进行相应的操作，告警或者中断
+
+
+## 注意事项
 
 - 如果单独打包`data-quality`的话，记得修改包路径和`data-quality.jar.dir`一致，配置内容在 `common.properties` 中的 `data-quality.jar.dir`
 - 如果是老版本升级使用，运行之前需要先执行`SQL`更新脚本进行数据库初始化。
