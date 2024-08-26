@@ -75,7 +75,7 @@ integer in [All DSIPs][all-DSIPs] issues.
 
 ## DSIP的例子
 
-* [[DSIP-1][Feature][Parent] Add Python API for DolphinScheduler][DSIP-1]: 有多个子任务和项目。
+- [[DSIP-1] [Feature] [Parent] Add Python API for DolphinScheduler][DSIP-1]: 有多个子任务和项目。
 
 [all-DSIPs]: https://github.com/apache/dolphinscheduler/issues?q=is%3Aissue+label%3A%22DSIP%22+
 [current-DSIPs]: https://github.com/apache/dolphinscheduler/issues?q=is%3Aissue+is%3Aopen+label%3A%22DSIP%22
@@ -83,4 +83,3 @@ integer in [All DSIPs][all-DSIPs] issues.
 [github-issue-choose]: https://github.com/apache/dolphinscheduler/issues/new/choose
 [mail-to-dev]: mailto:dev@dolphinscheduler.apache.org
 [DSIP-1]: https://github.com/apache/dolphinscheduler/issues/6407
-

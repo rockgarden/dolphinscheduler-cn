@@ -33,4 +33,3 @@
 ![demo-dinky](../../../../img/tasks/demo/dinky.png)
 
 ![demo-get-dinky-task-id](../../../../img/tasks/demo/dinky_task_id.png)
-

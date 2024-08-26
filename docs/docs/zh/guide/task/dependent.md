@@ -7,7 +7,7 @@ Dependent 节点，就是**依赖检查节点**。比如 A 流程依赖昨天的
 ## 创建任务
 
 - 点击项目管理 -> 项目名称 -> 工作流定义，点击“创建工作流”按钮，进入 DAG 编辑页面；
-- 拖动工具栏的<img src="../../../../img/tasks/icons/dependent.png" width="15"/> 任务节点到画板中。
+- 拖动工具栏的 <img src="../../../../img/tasks/icons/dependent.png" width="15"/> 任务节点到画板中。
 
 ## 任务参数
 
