@@ -29,11 +29,8 @@ export const TASK_TYPES_MAP = {
   SHELL: {
     alias: 'SHELL'
   },
-  SUB_PROCESS: {
-    alias: 'SUB_PROCESS'
-  },
-  DYNAMIC: {
-    alias: 'DYNAMIC'
+  SUB_WORKFLOW: {
+    alias: 'SUB_WORKFLOW'
   },
   PROCEDURE: {
     alias: 'PROCEDURE'
@@ -69,10 +66,6 @@ export const TASK_TYPES_MAP = {
   },
   CONDITIONS: {
     alias: 'CONDITIONS'
-  },
-  DATA_QUALITY: {
-    alias: 'DATA_QUALITY',
-    helperLinkDisable: true
   },
   SWITCH: {
     alias: 'SWITCH'

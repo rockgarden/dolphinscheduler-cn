@@ -22,8 +22,7 @@ type TaskExecuteType = 'STREAM' | 'BATCH'
 
 type TaskType =
   | 'SHELL'
-  | 'SUB_PROCESS'
-  | 'DYNAMIC'
+  | 'SUB_WORKFLOW'
   | 'PROCEDURE'
   | 'SQL'
   | 'SPARK'
@@ -35,7 +34,6 @@ type TaskType =
   | 'DATAX'
   | 'SQOOP'
   | 'CONDITIONS'
-  | 'DATA_QUALITY'
   | 'SWITCH'
   | 'SEATUNNEL'
   | 'EMR'

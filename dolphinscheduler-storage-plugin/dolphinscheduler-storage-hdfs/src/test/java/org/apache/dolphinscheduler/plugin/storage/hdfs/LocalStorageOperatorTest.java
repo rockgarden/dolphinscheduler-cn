@@ -20,11 +20,11 @@ package org.apache.dolphinscheduler.plugin.storage.hdfs;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.utils.FileUtils;
 import org.apache.dolphinscheduler.plugin.storage.api.ResourceMetadata;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageEntity;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageOperator;
+import org.apache.dolphinscheduler.plugin.storage.api.constants.StorageConstants;
 import org.apache.dolphinscheduler.spi.enums.ResourceType;
 
 import java.nio.file.FileAlreadyExistsException;
@@ -46,14 +46,14 @@ class LocalStorageOperatorTest {
             Paths.get(LocalStorageOperatorTest.class.getResource("/").getFile(), "localStorage").toString();
     private static final String tenantCode = "default";
     private static final String baseDir =
-            Paths.get(resourceBaseDir, tenantCode, Constants.RESOURCE_TYPE_FILE).toString();
+            Paths.get(resourceBaseDir, tenantCode, StorageOperator.FILE_FOLDER_NAME).toString();
 
     @SneakyThrows
     @BeforeEach
     public void setup() {
         Files.createDirectories(Paths.get(resourceBaseDir));
-        System.clearProperty(Constants.RESOURCE_UPLOAD_PATH);
-        System.setProperty(Constants.RESOURCE_UPLOAD_PATH, resourceBaseDir);
+        System.clearProperty(StorageConstants.RESOURCE_UPLOAD_PATH);
+        System.setProperty(StorageConstants.RESOURCE_UPLOAD_PATH, resourceBaseDir);
 
         LocalStorageOperatorFactory localStorageOperatorFactory = new LocalStorageOperatorFactory();
         storageOperator = localStorageOperatorFactory.createStorageOperate();
@@ -115,7 +115,7 @@ class LocalStorageOperatorTest {
     public void testGetStorageBaseDirectory_withTenant_withResourceTypeFile() {
         String storageBaseDirectory = storageOperator.getStorageBaseDirectory("default", ResourceType.FILE);
         assertThat(storageBaseDirectory)
-                .isEqualTo("file:" + Paths.get(resourceBaseDir, tenantCode, Constants.RESOURCE_TYPE_FILE));
+                .isEqualTo("file:" + Paths.get(resourceBaseDir, tenantCode, StorageOperator.FILE_FOLDER_NAME));
     }
 
     @Test
@@ -142,21 +142,21 @@ class LocalStorageOperatorTest {
     public void testGetStorageFileAbsolutePath() {
         String fileAbsolutePath = storageOperator.getStorageFileAbsolutePath("default", "test.sh");
         assertThat(fileAbsolutePath).isEqualTo(
-                "file:" + Paths.get(resourceBaseDir, tenantCode, Constants.RESOURCE_TYPE_FILE, "test.sh"));
+                "file:" + Paths.get(resourceBaseDir, tenantCode, StorageOperator.FILE_FOLDER_NAME, "test.sh"));
     }
 
     @SneakyThrows
     @Test
     public void testCreateStorageDir_notExists() {
         String testDirFileAbsolutePath =
-                "file:" + Paths.get(resourceBaseDir, "root", Constants.RESOURCE_TYPE_FILE, "testDir");
+                "file:" + Paths.get(resourceBaseDir, "root", StorageOperator.FILE_FOLDER_NAME, "testDir");
         try {
             storageOperator.createStorageDir(testDirFileAbsolutePath);
             StorageEntity storageEntity = storageOperator.getStorageEntity(testDirFileAbsolutePath);
             assertThat(storageEntity.getFullName()).isEqualTo(testDirFileAbsolutePath);
             assertThat(storageEntity.getFileName()).isEqualTo("testDir");
             assertThat(storageEntity.getPfullName())
-                    .isEqualTo("file:" + Paths.get(resourceBaseDir, "root", Constants.RESOURCE_TYPE_FILE));
+                    .isEqualTo("file:" + Paths.get(resourceBaseDir, "root", StorageOperator.FILE_FOLDER_NAME));
             assertThat(storageEntity.isDirectory()).isTrue();
             assertThat(storageEntity.getType()).isEqualTo(ResourceType.FILE);
         } finally {
@@ -168,7 +168,7 @@ class LocalStorageOperatorTest {
     @Test
     public void testCreateStorageDir_exists() {
         String testDirFileAbsolutePath =
-                "file:" + Paths.get(resourceBaseDir, "default", Constants.RESOURCE_TYPE_FILE, "sqlDirectory");
+                "file:" + Paths.get(resourceBaseDir, "default", StorageOperator.FILE_FOLDER_NAME, "sqlDirectory");
         assertThrows(FileAlreadyExistsException.class, () -> storageOperator.createStorageDir(testDirFileAbsolutePath));
     }
 
@@ -295,10 +295,14 @@ class LocalStorageOperatorTest {
         String resourceFileAbsolutePath = "file:" + baseDir;
         List<StorageEntity> storageEntities =
                 storageOperator.listFileStorageEntityRecursively(resourceFileAbsolutePath);
-        assertThat(storageEntities.size()).isEqualTo(1);
+        assertThat(storageEntities.size()).isEqualTo(3);
 
-        StorageEntity storageEntity2 = storageEntities.get(0);
-        assertThat(storageEntity2.getFullName()).isEqualTo("file:" + Paths.get(baseDir, "sqlDirectory", "demo.sql"));
+        StorageEntity storageEntity2 = storageEntities.stream()
+                .filter(storageEntity -> storageEntity.getFileName().equals("demo.sql"))
+                .findFirst()
+                .get();
+        assertThat(storageEntity2.getFullName())
+                .isEqualTo("file:" + Paths.get(baseDir, "sqlDirectory", "demo.sql"));
         assertThat(storageEntity2.getFileName()).isEqualTo("demo.sql");
         assertThat(storageEntity2.getPfullName()).isEqualTo("file:" + Paths.get(baseDir, "sqlDirectory"));
         assertThat(storageEntity2.isDirectory()).isFalse();

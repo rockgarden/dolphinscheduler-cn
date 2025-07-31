@@ -752,20 +752,13 @@ start API server. If you want disabled when Python gateway service you could cha
 
 ---
 
-## Q：How to determine whether a task has been cached when the cache is executed, that is, how to determine whether a task can use the running result of another task?
+## Q: Why is the schedule status of a workflow definition set to "Offline" after importing an online workflow definition?
 
-A: For the task identified as `Cache Execution`, when the task starts, a cache key will be generated, and the key is composed of the following fields and hashed:
+A: This is because we want to prevent users from directly importing a scheduled workflow that is already "Online".
+Therefore, when exporting such workflows, the system automatically changes their status to "Offline".
+To enforce this rule, even if a user manually sets the schedule status to "Online" in the workflow definition before importing,
+the system will override it and set it to "Offline".
 
-- task definition: the id of the task definition corresponding to the task instance
-- task version: the version of the task definition corresponding to the task instance
-- task input parameters: including the parameters passed in by the upstream node and the global parameter, the parameters referenced by the parameter list of the task definition and the parameters used by the task definition using `${}`
-- environment configuration: the actual configuration content of the environment configuration under the environment name, that is, the actual configuration content in the `security` - `environment management`
-
-If the task with cache identification runs, it will find whether there is data with the same cache key in the database,
-
-- If there is, copy the task instance and update the corresponding data
-- If not, the task runs as usual, and the task instance data is stored in the cache when the task is completed
-
-If you do not need to cache, you can right-click the node to run `Clear cache` in the workflow instance to clear the cache, which will clear the cache data of the current input parameters under this version.
+---
 
 We will collect more FAQ later

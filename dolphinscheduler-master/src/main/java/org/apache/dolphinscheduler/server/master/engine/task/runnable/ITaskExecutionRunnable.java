@@ -32,17 +32,62 @@ public interface ITaskExecutionRunnable
         extends
             Comparable<ITaskExecutionRunnable> {
 
-    String getName();
+    /**
+     * Get the task instance id.
+     * <p> Need to know the id might change since the task instance might be regenerated.
+     */
+    default int getId() {
+        return getTaskInstance().getId();
+    }
 
+    default String getName() {
+        return getTaskDefinition().getName();
+    }
+
+    /**
+     * Whether the task instance is initialized.
+     * <p> If the ITaskExecutionRunnable is never triggered, it is not initialized.
+     * <p> If the ITaskExecutionRunnable is created by failover, recovered then it is initialized.
+     */
     boolean isTaskInstanceInitialized();
 
-    void initializeTaskInstance();
+    /**
+     * Initialize the task instance with {@link FirstRunTaskInstanceFactory}
+     */
+    void initializeFirstRunTaskInstance();
 
-    boolean isTaskInstanceNeedRetry();
+    /**
+     * Initialize {@link TaskExecutionContext}.
+     * <p> The TaskExecutionContext should be initialized before dispatch stage.
+     */
+    void initializeTaskExecutionContext();
 
-    void initializeRetryTaskInstance();
+    /**
+     * Whether the task instance is running.
+     */
+    boolean isTaskInstanceCanRetry();
 
-    void initializeFailoverTaskInstance();
+    /**
+     * Retry the TaskExecutionRunnable.
+     * <p> Will create retry task instance and start it.
+     */
+    void retry();
+
+    /**
+     * Failover the TaskExecutionRunnable.
+     * <p> The failover logic is judged by the task instance state.
+     */
+    void failover();
+
+    /**
+     * Pause the TaskExecutionRunnable.
+     */
+    void pause();
+
+    /**
+     * Kill the TaskExecutionRunnable.
+     */
+    void kill();
 
     WorkflowEventBus getWorkflowEventBus();
 

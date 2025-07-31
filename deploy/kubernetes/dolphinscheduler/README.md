@@ -122,7 +122,6 @@ Please refer to the [Quick Start in Kubernetes](../../../docs/docs/en/guide/inst
 | common.sharedStoragePersistence.storage | string | `"20Gi"` | `PersistentVolumeClaim` size |
 | common.sharedStoragePersistence.storageClassName | string | `"-"` | Shared Storage persistent volume storage class, must support the access mode: ReadWriteMany |
 | conf.auto | bool | `false` | auto restart, if true, all components will be restarted automatically after the common configuration is updated. if false, you need to restart the components manually. default is false |
-| conf.common."alert.rpc.port" | int | `50052` | rpc port |
 | conf.common."appId.collect" | string | `"log"` | way to collect applicationId: log, aop |
 | conf.common."aws.credentials.provider.type" | string | `"AWSStaticCredentialsProvider"` |  |
 | conf.common."aws.s3.access.key.id" | string | `"minioadmin"` | The AWS access key. if resource.storage.type=S3, and credentials.provider.type is AWSStaticCredentialsProvider. This configuration is required |
@@ -131,7 +130,6 @@ Please refer to the [Quick Start in Kubernetes](../../../docs/docs/en/guide/inst
 | conf.common."aws.s3.endpoint" | string | `"http://minio:9000"` | You need to set this parameter when private cloud s3. If S3 uses public cloud, you only need to set resource.aws.region or set to the endpoint of a public cloud such as S3.cn-north-1.amazonaws.com.cn |
 | conf.common."aws.s3.region" | string | `"ca-central-1"` | The AWS Region to use. if resource.storage.type=S3, This configuration is required |
 | conf.common."conda.path" | string | `"/opt/anaconda3/etc/profile.d/conda.sh"` | set path of conda.sh |
-| conf.common."data-quality.jar.dir" | string | `nil` | data quality option |
 | conf.common."data.basedir.path" | string | `"/tmp/dolphinscheduler"` | user data local directory path, please make sure the directory exists and have read write permissions |
 | conf.common."datasource.encryption.enable" | bool | `false` | datasource encryption enable |
 | conf.common."datasource.encryption.salt" | string | `"!@#$%^&*"` | datasource encryption salt |
@@ -157,6 +155,7 @@ Please refer to the [Quick Start in Kubernetes](../../../docs/docs/en/guide/inst
 | conf.common."resource.manager.httpaddress.port" | int | `8088` | resourcemanager port, the default value is 8088 if not specified |
 | conf.common."resource.storage.type" | string | `"S3"` | resource storage type: HDFS, S3, OSS, GCS, ABS, NONE |
 | conf.common."resource.storage.upload.base.path" | string | `"/dolphinscheduler"` | resource store on HDFS/S3 path, resource file will store to this base path, self configuration, please make sure the directory exists on hdfs and have read write permissions. "/dolphinscheduler" is recommended |
+| conf.common."shell.kill.wait.timeout" | int | `10` | If the shell process is still active after this timeout value (in seconds), then will use kill -9 to kill it |
 | conf.common."sudo.enable" | bool | `true` | use sudo or not, if set true, executing user is tenant user and deploy user needs sudo permissions; if set false, executing user is the deploy user and doesn't need sudo permissions |
 | conf.common."support.hive.oneSession" | bool | `false` | Whether hive SQL is executed in the same session |
 | conf.common."task.resource.limit.state" | bool | `false` | Task resource limit state |

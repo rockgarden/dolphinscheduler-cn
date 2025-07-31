@@ -29,7 +29,6 @@ import org.apache.dolphinscheduler.dao.repository.TaskInstanceDao;
 import org.apache.dolphinscheduler.plugin.task.api.enums.TaskExecutionStatus;
 
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
 import java.util.List;
@@ -126,8 +125,7 @@ public class TaskInstanceDaoImpl extends BaseDao<TaskInstance, TaskInstanceMappe
             return true;
         }
         List<TaskInstance> taskInstances =
-                this.queryValidTaskListByWorkflowInstanceId(taskInstance.getProcessInstanceId(),
-                        taskInstance.getTestFlag());
+                this.queryValidTaskListByWorkflowInstanceId(taskInstance.getWorkflowInstanceId());
 
         for (TaskInstance task : taskInstances) {
             if (task.getState() == TaskExecutionStatus.FAILURE
@@ -139,8 +137,8 @@ public class TaskInstanceDaoImpl extends BaseDao<TaskInstance, TaskInstanceMappe
     }
 
     @Override
-    public List<TaskInstance> queryValidTaskListByWorkflowInstanceId(Integer processInstanceId, int testFlag) {
-        return mybatisMapper.findValidTaskListByProcessId(processInstanceId, Flag.YES, testFlag);
+    public List<TaskInstance> queryValidTaskListByWorkflowInstanceId(Integer processInstanceId) {
+        return mybatisMapper.findValidTaskListByWorkflowInstanceId(processInstanceId, Flag.YES);
     }
 
     @Override
@@ -151,27 +149,7 @@ public class TaskInstanceDaoImpl extends BaseDao<TaskInstance, TaskInstanceMappe
     @Override
     public List<TaskInstance> queryPreviousTaskListByWorkflowInstanceId(Integer workflowInstanceId) {
         WorkflowInstance workflowInstance = workflowInstanceMapper.selectById(workflowInstanceId);
-        return mybatisMapper.findValidTaskListByProcessId(workflowInstanceId, Flag.NO,
-                workflowInstance.getTestFlag());
-    }
-
-    @Override
-    public TaskInstance queryByCacheKey(String cacheKey) {
-        if (StringUtils.isEmpty(cacheKey)) {
-            return null;
-        }
-        return mybatisMapper.queryByCacheKey(cacheKey);
-    }
-
-    @Override
-    public Boolean clearCacheByCacheKey(String cacheKey) {
-        try {
-            mybatisMapper.clearCacheByCacheKey(cacheKey);
-            return true;
-        } catch (Exception e) {
-            log.error("clear cache by cacheKey failed", e);
-            return false;
-        }
+        return mybatisMapper.findValidTaskListByWorkflowInstanceId(workflowInstanceId, Flag.NO);
     }
 
     @Override
@@ -186,15 +164,13 @@ public class TaskInstanceDaoImpl extends BaseDao<TaskInstance, TaskInstanceMappe
 
     @Override
     public List<TaskInstance> queryLastTaskInstanceListIntervalInWorkflowInstance(Integer workflowInstanceId,
-                                                                                  Set<Long> taskCodes,
-                                                                                  int testFlag) {
-        return mybatisMapper.findLastTaskInstances(workflowInstanceId, taskCodes, testFlag);
+                                                                                  Set<Long> taskCodes) {
+        return mybatisMapper.findLastTaskInstances(workflowInstanceId, taskCodes);
     }
 
     @Override
-    public TaskInstance queryLastTaskInstanceIntervalInWorkflowInstance(Integer workflowInstanceId, long depTaskCode,
-                                                                        int testFlag) {
-        return mybatisMapper.findLastTaskInstance(workflowInstanceId, depTaskCode, testFlag);
+    public TaskInstance queryLastTaskInstanceIntervalInWorkflowInstance(Integer workflowInstanceId, long depTaskCode) {
+        return mybatisMapper.findLastTaskInstance(workflowInstanceId, depTaskCode);
     }
 
     @Override

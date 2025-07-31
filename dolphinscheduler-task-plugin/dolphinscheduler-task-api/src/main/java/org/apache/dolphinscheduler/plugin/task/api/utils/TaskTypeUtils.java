@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dolphinscheduler.plugin.task.api.utils;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -22,7 +23,6 @@ import org.apache.dolphinscheduler.plugin.task.api.ILogicTaskChannel;
 import org.apache.dolphinscheduler.plugin.task.api.TaskPluginManager;
 import org.apache.dolphinscheduler.plugin.task.api.task.ConditionsLogicTaskChannelFactory;
 import org.apache.dolphinscheduler.plugin.task.api.task.DependentLogicTaskChannelFactory;
-import org.apache.dolphinscheduler.plugin.task.api.task.DynamicLogicTaskChannelFactory;
 import org.apache.dolphinscheduler.plugin.task.api.task.SubWorkflowLogicTaskChannelFactory;
 import org.apache.dolphinscheduler.plugin.task.api.task.SwitchLogicTaskChannelFactory;
 
@@ -47,10 +47,6 @@ public class TaskTypeUtils {
 
     public boolean isDependentTask(String taskType) {
         return DependentLogicTaskChannelFactory.NAME.equals(taskType);
-    }
-
-    public boolean isDynamicTask(String taskType) {
-        return DynamicLogicTaskChannelFactory.NAME.equals(taskType);
     }
 
     public boolean isLogicTask(String taskType) {

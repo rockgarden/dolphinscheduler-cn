@@ -48,14 +48,14 @@ public class Command {
     @TableField("command_type")
     private CommandType commandType;
 
-    @TableField("process_definition_code")
-    private long processDefinitionCode;
+    @TableField("workflow_definition_code")
+    private long workflowDefinitionCode;
 
-    @TableField("process_definition_version")
-    private int processDefinitionVersion;
+    @TableField("workflow_definition_version")
+    private int workflowDefinitionVersion;
 
-    @TableField("process_instance_id")
-    private int processInstanceId;
+    @TableField("workflow_instance_id")
+    private int workflowInstanceId;
 
     /**
      * command parameter, format json
@@ -63,8 +63,8 @@ public class Command {
     @TableField("command_param")
     private String commandParam;
 
-    @TableField("process_instance_priority")
-    private Priority processInstancePriority;
+    @TableField("workflow_instance_priority")
+    private Priority workflowInstancePriority;
 
     @Deprecated
     @TableField("executor_id")
@@ -119,19 +119,12 @@ public class Command {
     @TableField("dry_run")
     private int dryRun;
 
-    /**
-     * test flag
-     */
-    @Deprecated
-    @TableField("test_flag")
-    private int testFlag;
-
     public Command(
                    CommandType commandType,
                    TaskDependType taskDependType,
                    FailureStrategy failureStrategy,
                    int executorId,
-                   long processDefinitionCode,
+                   long workflowDefinitionCode,
                    String commandParam,
                    WarningType warningType,
                    int warningGroupId,
@@ -140,12 +133,11 @@ public class Command {
                    Long environmentCode,
                    Priority workflowInstancePriority,
                    int dryRun,
-                   int processInstanceId,
-                   int processDefinitionVersion,
-                   int testFlag) {
+                   int workflowInstanceId,
+                   int workflowDefinitionVersion) {
         this.commandType = commandType;
         this.executorId = executorId;
-        this.processDefinitionCode = processDefinitionCode;
+        this.workflowDefinitionCode = workflowDefinitionCode;
         this.commandParam = commandParam;
         this.warningType = warningType;
         this.warningGroupId = warningGroupId;
@@ -156,10 +148,9 @@ public class Command {
         this.updateTime = new Date();
         this.workerGroup = workerGroup;
         this.environmentCode = environmentCode;
-        this.processInstancePriority = workflowInstancePriority;
+        this.workflowInstancePriority = workflowInstancePriority;
         this.dryRun = dryRun;
-        this.processInstanceId = processInstanceId;
-        this.processDefinitionVersion = processDefinitionVersion;
-        this.testFlag = testFlag;
+        this.workflowInstanceId = workflowInstanceId;
+        this.workflowDefinitionVersion = workflowDefinitionVersion;
     }
 }

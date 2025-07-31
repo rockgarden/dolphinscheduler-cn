@@ -21,16 +21,11 @@ import static org.apache.dolphinscheduler.common.constants.CommandKeyConstants.C
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.enums.TaskGroupQueueStatus;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.graph.DAG;
 import org.apache.dolphinscheduler.common.model.TaskNodeRelation;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
-import org.apache.dolphinscheduler.dao.entity.DqExecuteResult;
-import org.apache.dolphinscheduler.dao.entity.DqRule;
-import org.apache.dolphinscheduler.dao.entity.DqRuleExecuteSql;
-import org.apache.dolphinscheduler.dao.entity.DqRuleInputEntry;
 import org.apache.dolphinscheduler.dao.entity.TaskDefinitionLog;
 import org.apache.dolphinscheduler.dao.entity.TaskGroupQueue;
 import org.apache.dolphinscheduler.dao.entity.TaskInstance;
@@ -39,42 +34,21 @@ import org.apache.dolphinscheduler.dao.entity.WorkflowDefinition;
 import org.apache.dolphinscheduler.dao.entity.WorkflowDefinitionLog;
 import org.apache.dolphinscheduler.dao.entity.WorkflowInstance;
 import org.apache.dolphinscheduler.dao.entity.WorkflowTaskRelationLog;
-import org.apache.dolphinscheduler.dao.mapper.CommandMapper;
-import org.apache.dolphinscheduler.dao.mapper.DataSourceMapper;
-import org.apache.dolphinscheduler.dao.mapper.DqComparisonTypeMapper;
-import org.apache.dolphinscheduler.dao.mapper.DqExecuteResultMapper;
-import org.apache.dolphinscheduler.dao.mapper.DqRuleExecuteSqlMapper;
-import org.apache.dolphinscheduler.dao.mapper.DqRuleInputEntryMapper;
-import org.apache.dolphinscheduler.dao.mapper.DqRuleMapper;
-import org.apache.dolphinscheduler.dao.mapper.ErrorCommandMapper;
 import org.apache.dolphinscheduler.dao.mapper.TaskDefinitionLogMapper;
 import org.apache.dolphinscheduler.dao.mapper.TaskDefinitionMapper;
-import org.apache.dolphinscheduler.dao.mapper.TaskGroupMapper;
 import org.apache.dolphinscheduler.dao.mapper.TaskGroupQueueMapper;
-import org.apache.dolphinscheduler.dao.mapper.TaskInstanceMapper;
-import org.apache.dolphinscheduler.dao.mapper.TenantMapper;
 import org.apache.dolphinscheduler.dao.mapper.UserMapper;
 import org.apache.dolphinscheduler.dao.mapper.WorkflowDefinitionLogMapper;
 import org.apache.dolphinscheduler.dao.mapper.WorkflowDefinitionMapper;
 import org.apache.dolphinscheduler.dao.mapper.WorkflowInstanceMapper;
 import org.apache.dolphinscheduler.dao.mapper.WorkflowTaskRelationLogMapper;
-import org.apache.dolphinscheduler.dao.mapper.WorkflowTaskRelationMapper;
 import org.apache.dolphinscheduler.dao.repository.TaskDefinitionDao;
 import org.apache.dolphinscheduler.dao.repository.TaskDefinitionLogDao;
-import org.apache.dolphinscheduler.dao.repository.TaskInstanceDao;
-import org.apache.dolphinscheduler.dao.repository.WorkflowInstanceDao;
-import org.apache.dolphinscheduler.plugin.task.api.TaskPluginManager;
 import org.apache.dolphinscheduler.plugin.task.api.enums.Direct;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.DataType;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.DqTaskState;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.ExecuteSqlType;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.InputType;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.OptionSourceType;
 import org.apache.dolphinscheduler.plugin.task.api.model.Property;
 import org.apache.dolphinscheduler.plugin.task.api.model.ResourceInfo;
 import org.apache.dolphinscheduler.service.expand.CuringParamsService;
 import org.apache.dolphinscheduler.service.model.TaskNode;
-import org.apache.dolphinscheduler.spi.params.base.FormType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -102,70 +76,39 @@ public class ProcessServiceTest {
 
     @InjectMocks
     private ProcessServiceImpl processService;
-    @Mock
-    private CommandMapper commandMapper;
+
     @Mock
     private WorkflowTaskRelationLogMapper workflowTaskRelationLogMapper;
+
     @Mock
-    private ErrorCommandMapper errorCommandMapper;
-    @Mock
-    private WorkflowDefinitionMapper processDefineMapper;
+    private WorkflowDefinitionMapper workflowDefinitionMapper;
+
     @Mock
     private WorkflowInstanceMapper workflowInstanceMapper;
-    @Mock
-    private WorkflowInstanceDao workflowInstanceDao;
 
     @Mock
-    private TaskInstanceDao taskInstanceDao;
-
-    @Mock
-    private TaskDefinitionLogDao taskDefinitionLogDao;
+    private WorkflowDefinitionLogMapper workflowDefinitionLogMapper;
 
     @Mock
     private TaskDefinitionDao taskDefinitionDao;
 
     @Mock
-    private UserMapper userMapper;
-    @Mock
-    private TenantMapper tenantMapper;
+    private TaskDefinitionLogDao taskDefinitionLogDao;
 
     @Mock
-    private TaskInstanceMapper taskInstanceMapper;
+    private UserMapper userMapper;
+
     @Mock
     private TaskDefinitionLogMapper taskDefinitionLogMapper;
+
     @Mock
     private TaskDefinitionMapper taskDefinitionMapper;
-    @Mock
-    private WorkflowTaskRelationMapper workflowTaskRelationMapper;
-    @Mock
-    private WorkflowDefinitionLogMapper processDefineLogMapper;
-    @Mock
-    private TaskGroupMapper taskGroupMapper;
-    @Mock
-    private DataSourceMapper dataSourceMapper;
+
     @Mock
     private TaskGroupQueueMapper taskGroupQueueMapper;
 
     @Mock
-    private DqExecuteResultMapper dqExecuteResultMapper;
-
-    @Mock
-    private DqRuleMapper dqRuleMapper;
-
-    @Mock
-    private DqRuleInputEntryMapper dqRuleInputEntryMapper;
-
-    @Mock
-    private DqRuleExecuteSqlMapper dqRuleExecuteSqlMapper;
-
-    @Mock
-    private DqComparisonTypeMapper dqComparisonTypeMapper;
-
-    @Mock
     CuringParamsService curingGlobalParamsService;
-
-    @Mock
-    TaskPluginManager taskPluginManager;
 
     @Test
     public void testGetUserById() {
@@ -179,17 +122,17 @@ public class ProcessServiceTest {
     public void testFormatTaskAppId() {
         TaskInstance taskInstance = new TaskInstance();
         taskInstance.setId(333);
-        taskInstance.setProcessInstanceId(222);
-        when(processService.findProcessInstanceById(taskInstance.getProcessInstanceId())).thenReturn(null);
+        taskInstance.setWorkflowInstanceId(222);
+        when(processService.findWorkflowInstanceById(taskInstance.getWorkflowInstanceId())).thenReturn(null);
         Assertions.assertEquals("", processService.formatTaskAppId(taskInstance));
 
         WorkflowDefinition workflowDefinition = new WorkflowDefinition();
         workflowDefinition.setId(111);
         WorkflowInstance workflowInstance = new WorkflowInstance();
         workflowInstance.setId(222);
-        workflowInstance.setProcessDefinitionVersion(1);
-        workflowInstance.setProcessDefinitionCode(1L);
-        when(processService.findProcessInstanceById(taskInstance.getProcessInstanceId()))
+        workflowInstance.setWorkflowDefinitionVersion(1);
+        workflowInstance.setWorkflowDefinitionCode(1L);
+        when(processService.findWorkflowInstanceById(taskInstance.getWorkflowInstanceId()))
                 .thenReturn(workflowInstance);
         Assertions.assertEquals("", processService.formatTaskAppId(taskInstance));
     }
@@ -203,7 +146,7 @@ public class ProcessServiceTest {
         WorkflowDefinition workflowDefinition = new WorkflowDefinition();
         workflowDefinition.setCode(parentProcessDefineCode);
         workflowDefinition.setVersion(parentProcessDefineVersion);
-        when(processDefineMapper.selectById(parentProcessDefineId)).thenReturn(workflowDefinition);
+        when(workflowDefinitionMapper.selectById(parentProcessDefineId)).thenReturn(workflowDefinition);
 
         long postTaskCode = 2L;
         int postTaskVersion = 2;
@@ -213,12 +156,12 @@ public class ProcessServiceTest {
         processTaskRelationLog.setPostTaskCode(postTaskCode);
         processTaskRelationLog.setPostTaskVersion(postTaskVersion);
         relationLogList.add(processTaskRelationLog);
-        when(workflowTaskRelationLogMapper.queryByProcessCodeAndVersion(parentProcessDefineCode,
+        when(workflowTaskRelationLogMapper.queryByWorkflowCodeAndVersion(parentProcessDefineCode,
                 parentProcessDefineVersion)).thenReturn(relationLogList);
 
         List<TaskDefinitionLog> taskDefinitionLogs = new ArrayList<>();
         TaskDefinitionLog taskDefinitionLog1 = new TaskDefinitionLog();
-        taskDefinitionLog1.setTaskParams("{\"processDefinitionCode\": 123L}");
+        taskDefinitionLog1.setTaskParams("{\"workflowDefinitionCode\": 123L}");
         taskDefinitionLogs.add(taskDefinitionLog1);
         when(taskDefinitionLogMapper.queryByTaskDefinitions(Mockito.anySet())).thenReturn(taskDefinitionLogs);
 
@@ -238,104 +181,6 @@ public class ProcessServiceTest {
         processDefinitionLog.setCode(1L);
         processDefinitionLog.setVersion(2);
         Assertions.assertEquals(0, processService.switchVersion(workflowDefinition, processDefinitionLog));
-    }
-
-    @Test
-    public void getDqRule() {
-        when(dqRuleMapper.selectById(1)).thenReturn(new DqRule());
-        Assertions.assertNotNull(processService.getDqRule(1));
-    }
-
-    @Test
-    public void getRuleInputEntry() {
-        when(dqRuleInputEntryMapper.getRuleInputEntryList(1)).thenReturn(getRuleInputEntryList());
-        Assertions.assertNotNull(processService.getRuleInputEntry(1));
-    }
-
-    @Test
-    public void getDqExecuteSql() {
-        when(dqRuleExecuteSqlMapper.getExecuteSqlList(1)).thenReturn(getRuleExecuteSqlList());
-        Assertions.assertNotNull(processService.getDqExecuteSql(1));
-    }
-
-    private List<DqRuleInputEntry> getRuleInputEntryList() {
-        List<DqRuleInputEntry> list = new ArrayList<>();
-
-        DqRuleInputEntry srcConnectorType = new DqRuleInputEntry();
-        srcConnectorType.setTitle("源数据类型");
-        srcConnectorType.setField("src_connector_type");
-        srcConnectorType.setType(FormType.SELECT.getFormType());
-        srcConnectorType.setCanEdit(true);
-        srcConnectorType.setIsShow(true);
-        srcConnectorType.setData("JDBC");
-        srcConnectorType.setPlaceholder("Please select the source connector type");
-        srcConnectorType.setOptionSourceType(OptionSourceType.DEFAULT.getCode());
-        srcConnectorType
-                .setOptions("[{\"label\":\"HIVE\",\"value\":\"HIVE\"},{\"label\":\"JDBC\",\"value\":\"JDBC\"}]");
-        srcConnectorType.setInputType(InputType.DEFAULT.getCode());
-        srcConnectorType.setDataType(DataType.NUMBER.getCode());
-        srcConnectorType.setIsEmit(true);
-
-        DqRuleInputEntry statisticsName = new DqRuleInputEntry();
-        statisticsName.setTitle("统计值名");
-        statisticsName.setField("statistics_name");
-        statisticsName.setType(FormType.INPUT.getFormType());
-        statisticsName.setCanEdit(true);
-        statisticsName.setIsShow(true);
-        statisticsName.setPlaceholder("Please enter statistics name, the alias in statistics execute sql");
-        statisticsName.setOptionSourceType(OptionSourceType.DEFAULT.getCode());
-        statisticsName.setInputType(InputType.DEFAULT.getCode());
-        statisticsName.setDataType(DataType.STRING.getCode());
-        statisticsName.setIsEmit(false);
-
-        DqRuleInputEntry statisticsExecuteSql = new DqRuleInputEntry();
-        statisticsExecuteSql.setTitle("统计值计算SQL");
-        statisticsExecuteSql.setField("statistics_execute_sql");
-        statisticsExecuteSql.setType(FormType.TEXTAREA.getFormType());
-        statisticsExecuteSql.setCanEdit(true);
-        statisticsExecuteSql.setIsShow(true);
-        statisticsExecuteSql.setPlaceholder("Please enter the statistics execute sql");
-        statisticsExecuteSql.setOptionSourceType(OptionSourceType.DEFAULT.getCode());
-        statisticsExecuteSql.setDataType(DataType.LIKE_SQL.getCode());
-        statisticsExecuteSql.setIsEmit(false);
-
-        list.add(srcConnectorType);
-        list.add(statisticsName);
-        list.add(statisticsExecuteSql);
-
-        return list;
-    }
-
-    private List<DqRuleExecuteSql> getRuleExecuteSqlList() {
-        List<DqRuleExecuteSql> list = new ArrayList<>();
-
-        DqRuleExecuteSql executeSqlDefinition = new DqRuleExecuteSql();
-        executeSqlDefinition.setIndex(0);
-        executeSqlDefinition.setSql("SELECT COUNT(*) AS total FROM ${src_table} WHERE (${src_filter})");
-        executeSqlDefinition.setTableAlias("total_count");
-        executeSqlDefinition.setType(ExecuteSqlType.COMPARISON.getCode());
-        list.add(executeSqlDefinition);
-
-        return list;
-    }
-
-    public DqExecuteResult getExecuteResult() {
-        DqExecuteResult dqExecuteResult = new DqExecuteResult();
-        dqExecuteResult.setId(1);
-        dqExecuteResult.setState(DqTaskState.FAILURE.getCode());
-
-        return dqExecuteResult;
-    }
-
-    public List<DqExecuteResult> getExecuteResultList() {
-
-        List<DqExecuteResult> list = new ArrayList<>();
-        DqExecuteResult dqExecuteResult = new DqExecuteResult();
-        dqExecuteResult.setId(1);
-        dqExecuteResult.setState(DqTaskState.FAILURE.getCode());
-        list.add(dqExecuteResult);
-
-        return list;
     }
 
     @Test
@@ -411,9 +256,9 @@ public class ProcessServiceTest {
 
         WorkflowTaskRelationLog processTaskRelation = new WorkflowTaskRelationLog();
         processTaskRelation.setName("def 1");
-        processTaskRelation.setProcessDefinitionVersion(1);
+        processTaskRelation.setWorkflowDefinitionVersion(1);
         processTaskRelation.setProjectCode(1L);
-        processTaskRelation.setProcessDefinitionCode(1L);
+        processTaskRelation.setWorkflowDefinitionCode(1L);
         processTaskRelation.setPostTaskCode(3L);
         processTaskRelation.setPreTaskCode(2L);
         processTaskRelation.setUpdateTime(new Date());
@@ -430,7 +275,6 @@ public class ProcessServiceTest {
         taskDefinition.setVersion(2);
         taskDefinition.setCreateTime(new Date());
         taskDefinition.setUpdateTime(new Date());
-        taskDefinition.setIsCache(Flag.NO);
 
         TaskDefinitionLog td2 = new TaskDefinitionLog();
         td2.setCode(2L);
@@ -447,7 +291,7 @@ public class ProcessServiceTest {
         taskDefinitionLogs.add(td2);
 
         when(taskDefinitionLogDao.queryTaskDefineLogList(any())).thenReturn(taskDefinitionLogs);
-        when(workflowTaskRelationLogMapper.queryByProcessCodeAndVersion(Mockito.anyLong(), Mockito.anyInt()))
+        when(workflowTaskRelationLogMapper.queryByWorkflowCodeAndVersion(Mockito.anyLong(), Mockito.anyInt()))
                 .thenReturn(list);
 
         DAG<Long, TaskNode, TaskNodeRelation> stringTaskNodeTaskNodeRelationDAG =
@@ -458,7 +302,7 @@ public class ProcessServiceTest {
     @Test
     public void testChangeOutParam() {
         TaskInstance taskInstance = new TaskInstance();
-        taskInstance.setProcessInstanceId(62);
+        taskInstance.setWorkflowInstanceId(62);
         WorkflowInstance workflowInstance = new WorkflowInstance();
         workflowInstance.setId(62);
         taskInstance.setVarPool("[{\"direct\":\"OUT\",\"prop\":\"test1\",\"type\":\"VARCHAR\",\"value\":\"\"}]");

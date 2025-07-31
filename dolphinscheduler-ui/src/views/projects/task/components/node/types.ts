@@ -376,7 +376,7 @@ interface ITaskParams {
   startupScript?: string
   executionTimeout?: string
   startTimeout?: string
-  processDefinitionCode?: number
+  workflowDefinitionCode?: number
   conditionResult?: {
     successNode?: number[]
     failedNode?: number[]
@@ -484,7 +484,7 @@ interface INodeData
     Omit<IRuleParameters, 'mapping_columns'> {
   id?: string
   taskType?: ITaskType
-  processName?: number
+  workflowDefinitionName?: number
   delayTime?: number
   description?: string
   environmentCode?: number | null
@@ -493,7 +493,6 @@ interface INodeData
   cpuQuota?: number
   memoryMax?: number
   flag?: 'YES' | 'NO'
-  isCache?: boolean
   taskGroupId?: number
   taskGroupPriority?: number
   taskPriority?: string
@@ -524,11 +523,10 @@ interface INodeData
 interface ITaskData
   extends Omit<
     INodeData,
-    'isCache' | 'timeoutFlag' | 'taskPriority' | 'timeoutNotifyStrategy'
+    'timeoutFlag' | 'taskPriority' | 'timeoutNotifyStrategy'
   > {
   name?: string
   taskPriority?: string
-  isCache?: 'YES' | 'NO'
   timeoutFlag?: 'OPEN' | 'CLOSE'
   timeoutNotifyStrategy?: string | []
   taskParams?: ITaskParams

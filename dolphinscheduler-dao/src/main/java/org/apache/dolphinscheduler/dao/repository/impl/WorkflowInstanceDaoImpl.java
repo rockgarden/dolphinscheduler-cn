@@ -91,14 +91,12 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
      */
     @Override
     public WorkflowInstance queryLastSchedulerWorkflowInterval(Long workflowDefinitionCode, Long taskDefinitionCode,
-                                                               DateInterval dateInterval,
-                                                               int testFlag) {
-        return mybatisMapper.queryLastSchedulerProcess(
+                                                               DateInterval dateInterval) {
+        return mybatisMapper.queryLastSchedulerWorkflow(
                 workflowDefinitionCode,
                 taskDefinitionCode,
                 dateInterval.getStartTime(),
-                dateInterval.getEndTime(),
-                testFlag);
+                dateInterval.getEndTime());
     }
 
     /**
@@ -111,13 +109,21 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
      */
     @Override
     public WorkflowInstance queryLastManualWorkflowInterval(Long definitionCode, Long taskCode,
-                                                            DateInterval dateInterval,
-                                                            int testFlag) {
-        return mybatisMapper.queryLastManualProcess(definitionCode,
+                                                            DateInterval dateInterval) {
+        return mybatisMapper.queryLastManualWorkflow(definitionCode,
                 taskCode,
                 dateInterval.getStartTime(),
-                dateInterval.getEndTime(),
-                testFlag);
+                dateInterval.getEndTime());
+    }
+
+    @Override
+    public WorkflowInstance queryLastRunningWorkflowInterval(Long definitionCode, DateInterval dateInterval) {
+        int[] runningStateArray = new int[]{WorkflowExecutionStatus.SUBMITTED_SUCCESS.ordinal(),
+                WorkflowExecutionStatus.RUNNING_EXECUTION.ordinal(),
+                WorkflowExecutionStatus.READY_PAUSE.ordinal(),
+                WorkflowExecutionStatus.READY_STOP.ordinal()};
+        return mybatisMapper.queryLastRunningWorkflow(definitionCode, dateInterval.getStartTime(),
+                dateInterval.getEndTime(), runningStateArray);
     }
 
     /**
@@ -128,7 +134,7 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
      */
     @Override
     public WorkflowInstance queryFirstScheduleWorkflowInstance(Long definitionCode) {
-        return mybatisMapper.queryFirstScheduleProcessInstance(definitionCode);
+        return mybatisMapper.queryFirstScheduleWorkflowInstance(definitionCode);
     }
 
     /**
@@ -139,7 +145,7 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
      */
     @Override
     public WorkflowInstance queryFirstStartWorkflowInstance(Long definitionCode) {
-        return mybatisMapper.queryFirstStartProcessInstance(definitionCode);
+        return mybatisMapper.queryFirstStartWorkflowInstance(definitionCode);
     }
 
     @Override
@@ -147,10 +153,10 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
         WorkflowInstance workflowInstance = null;
         WorkflowInstanceRelation workflowInstanceRelation =
                 workflowInstanceRelationMapper.queryByParentId(workflowInstanceId, taskInstanceId);
-        if (workflowInstanceRelation == null || workflowInstanceRelation.getProcessInstanceId() == 0) {
+        if (workflowInstanceRelation == null || workflowInstanceRelation.getWorkflowInstanceId() == 0) {
             return workflowInstance;
         }
-        workflowInstance = queryById(workflowInstanceRelation.getProcessInstanceId());
+        workflowInstance = queryById(workflowInstanceRelation.getWorkflowInstanceId());
         return workflowInstance;
     }
 
@@ -165,7 +171,7 @@ public class WorkflowInstanceDaoImpl extends BaseDao<WorkflowInstance, WorkflowI
     @Override
     public List<String> queryNeedFailoverMasters() {
         return mybatisMapper
-                .queryNeedFailoverProcessInstanceHost(WorkflowExecutionStatus.getNeedFailoverWorkflowInstanceState());
+                .queryNeedFailoverWorkflowInstanceHost(WorkflowExecutionStatus.getNeedFailoverWorkflowInstanceState());
     }
 
     @Override

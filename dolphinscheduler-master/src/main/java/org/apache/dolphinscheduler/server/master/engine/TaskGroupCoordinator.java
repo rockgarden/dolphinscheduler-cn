@@ -21,7 +21,6 @@ import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.enums.TaskGroupQueueStatus;
 import org.apache.dolphinscheduler.common.enums.WorkflowExecutionStatus;
-import org.apache.dolphinscheduler.common.lifecycle.ServerLifeCycleManager;
 import org.apache.dolphinscheduler.common.thread.BaseDaemonThread;
 import org.apache.dolphinscheduler.common.thread.ThreadUtils;
 import org.apache.dolphinscheduler.dao.entity.TaskGroup;
@@ -38,8 +37,6 @@ import org.apache.dolphinscheduler.extract.master.transportor.TaskGroupSlotAcqui
 import org.apache.dolphinscheduler.extract.master.transportor.TaskGroupSlotAcquireSuccessNotifyResponse;
 import org.apache.dolphinscheduler.plugin.task.api.enums.TaskExecutionStatus;
 import org.apache.dolphinscheduler.plugin.task.api.utils.LogUtils;
-import org.apache.dolphinscheduler.registry.api.RegistryClient;
-import org.apache.dolphinscheduler.registry.api.enums.RegistryNodeType;
 import org.apache.dolphinscheduler.server.master.utils.TaskGroupUtils;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -48,6 +45,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -56,34 +54,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-/**
- * The TaskGroupCoordinator use to manage the task group slot. The task group slot is used to limit the number of {@link TaskInstance} that can be run at the same time.
- * <p>
- * The {@link TaskGroupQueue} is used to represent the task group slot. When a {@link TaskGroupQueue} which inQueue is YES means the {@link TaskGroupQueue} is using by a {@link TaskInstance}.
- * <p>
- * When the {@link TaskInstance} need to use task group, we should use @{@link TaskGroupCoordinator#acquireTaskGroupSlot(TaskInstance)} to acquire the task group slot,
- * this method doesn't block should always acquire successfully, and you should directly stop dispatch the task instance.
- * When the task group slot is available, the TaskGroupCoordinator will wake up the waiting {@link TaskInstance} to dispatch.
- * <pre>
- *     if(needAcquireTaskGroupSlot(taskInstance)) {
- *         taskGroupCoordinator.acquireTaskGroupSlot(taskInstance);
- *         return;
- *     }
- * </pre>
- * <p>
- * When the {@link TaskInstance} is finished, we should use @{@link TaskGroupCoordinator#releaseTaskGroupSlot(TaskInstance)} to release the task group slot.
- * <pre>
- *     if(needToReleaseTaskGroupSlot(taskInstance)) {
- *         taskGroupCoordinator.releaseTaskGroupSlot(taskInstance);
- *     }
- * </pre>
- */
+import com.google.common.annotations.VisibleForTesting;
+
 @Slf4j
 @Component
-public class TaskGroupCoordinator extends BaseDaemonThread {
-
-    @Autowired
-    private RegistryClient registryClient;
+public class TaskGroupCoordinator implements ITaskGroupCoordinator, AutoCloseable {
 
     @Autowired
     private TaskGroupDao taskGroupDao;
@@ -97,40 +72,48 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
     @Autowired
     private WorkflowInstanceDao workflowInstanceDao;
 
-    private static int DEFAULT_LIMIT = 1000;
+    private boolean flag = false;
 
-    public TaskGroupCoordinator() {
-        super("TaskGroupCoordinator");
-    }
+    private Thread internalThread;
 
-    @Override
+    private static final int DEFAULT_LIMIT = 1000;
+
     public synchronized void start() {
         log.info("TaskGroupCoordinator starting...");
-        super.start();
+        if (flag) {
+            throw new IllegalStateException("TaskGroupCoordinator is already started");
+        }
+        if (internalThread != null) {
+            throw new IllegalStateException("InternalThread is already started");
+        }
+        flag = true;
+        internalThread = new BaseDaemonThread(this::doStart) {
+        };
+        internalThread.start();
         log.info("TaskGroupCoordinator started...");
     }
 
-    @Override
-    public void run() {
-        while (!ServerLifeCycleManager.isStopped()) {
+    @VisibleForTesting
+    boolean isStarted() {
+        return flag;
+    }
+
+    private void doStart() {
+        // Sleep 1 minutes here to make sure the previous task group slot has been released.
+        // This step is not necessary, since the wakeup operation is idempotent, but we can avoid confusion warning.
+        ThreadUtils.sleep(TimeUnit.MINUTES.toMillis(1));
+
+        while (flag) {
             try {
-                if (!ServerLifeCycleManager.isRunning()) {
-                    continue;
-                }
-                registryClient.getLock(RegistryNodeType.MASTER_TASK_GROUP_COORDINATOR_LOCK.getRegistryPath());
-                try {
-                    StopWatch taskGroupCoordinatorRoundCost = StopWatch.createStarted();
+                final StopWatch taskGroupCoordinatorRoundCost = StopWatch.createStarted();
 
-                    amendTaskGroupUseSize();
-                    amendTaskGroupQueueStatus();
-                    dealWithForceStartTaskGroupQueue();
-                    dealWithWaitingTaskGroupQueue();
+                amendTaskGroupUseSize();
+                amendTaskGroupQueueStatus();
+                dealWithForceStartTaskGroupQueue();
+                dealWithWaitingTaskGroupQueue();
 
-                    taskGroupCoordinatorRoundCost.stop();
-                    log.info("TaskGroupCoordinator round cost: {}/ms", taskGroupCoordinatorRoundCost.getTime());
-                } finally {
-                    registryClient.releaseLock(RegistryNodeType.MASTER_TASK_GROUP_COORDINATOR_LOCK.getRegistryPath());
-                }
+                taskGroupCoordinatorRoundCost.stop();
+                log.debug("TaskGroupCoordinator round cost: {}/ms", taskGroupCoordinatorRoundCost.getTime());
             } catch (Throwable e) {
                 log.error("TaskGroupCoordinator error", e);
             } finally {
@@ -184,7 +167,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
             }
             minTaskGroupQueueId = taskGroupQueues.get(taskGroupQueues.size() - 1).getId();
         }
-        log.info("Success amend TaskGroupQueue status cost: {}/ms", taskGroupCoordinatorRoundTimeCost.getTime());
+        log.debug("Success amend TaskGroupQueue status cost: {}/ms", taskGroupCoordinatorRoundTimeCost.getTime());
     }
 
     /**
@@ -213,7 +196,6 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
                 log.warn("The TaskInstance: {} state: {} finished, will release the TaskGroupQueue: {}",
                         taskInstance.getName(), taskInstance.getState(), taskGroupQueue);
                 deleteTaskGroupQueueSlot(taskGroupQueue);
-                continue;
             }
         }
     }
@@ -227,7 +209,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         int limit = DEFAULT_LIMIT;
         StopWatch taskGroupCoordinatorRoundTimeCost = StopWatch.createStarted();
         while (true) {
-            List<TaskGroupQueue> taskGroupQueues =
+            final List<TaskGroupQueue> taskGroupQueues =
                     taskGroupQueueDao.queryWaitNotifyForceStartTaskGroupQueue(minTaskGroupQueueId, limit);
             if (CollectionUtils.isEmpty(taskGroupQueues)) {
                 break;
@@ -238,7 +220,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
             }
             minTaskGroupQueueId = taskGroupQueues.get(taskGroupQueues.size() - 1).getId();
         }
-        log.info("Success deal with force start TaskGroupQueue cost: {}/ms",
+        log.debug("Success deal with force start TaskGroupQueue cost: {}/ms",
                 taskGroupCoordinatorRoundTimeCost.getTime());
     }
 
@@ -246,7 +228,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         // Find the force start task group queue(Which is inQueue and forceStart is YES)
         // Notify the related waiting task instance
         // Set the taskGroupQueue status to RELEASE and remove it from queue
-        for (TaskGroupQueue taskGroupQueue : taskGroupQueues) {
+        for (final TaskGroupQueue taskGroupQueue : taskGroupQueues) {
             try {
                 LogUtils.setTaskInstanceIdMDC(taskGroupQueue.getTaskId());
                 // notify the waiting task instance
@@ -313,11 +295,12 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
                     // next time.
                     notifyWaitingTaskInstance(taskGroupQueue);
 
-                    // Set the taskGroupQueue status to RUNNING and remove from queue
+                    // Set the taskGroupQueue status to ACQUIRE_SUCCESS and remove from WAITING queue
                     taskGroupQueue.setInQueue(Flag.YES.getCode());
                     taskGroupQueue.setStatus(TaskGroupQueueStatus.ACQUIRE_SUCCESS);
                     taskGroupQueue.setUpdateTime(new Date());
                     taskGroupQueueDao.updateById(taskGroupQueue);
+                    log.info("Success acquire TaskGroupSlot for TaskGroupQueue: {}", taskGroupQueue);
                 } catch (UnsupportedOperationException unsupportedOperationException) {
                     deleteTaskGroupQueueSlot(taskGroupQueue);
                     log.info(
@@ -332,13 +315,8 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         }
     }
 
-    /**
-     * If the {@link TaskInstance#getTaskGroupId()} > 0, and the TaskGroup flag is {@link Flag#YES} then the task instance need to use task group.
-     *
-     * @param taskInstance task instance
-     * @return true if the TaskInstance need to acquireTaskGroupSlot
-     */
-    public boolean needAcquireTaskGroupSlot(TaskInstance taskInstance) {
+    @Override
+    public boolean needAcquireTaskGroupSlot(final TaskInstance taskInstance) {
         if (taskInstance == null) {
             throw new IllegalArgumentException("The TaskInstance is null");
         }
@@ -355,15 +333,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         return Flag.YES.equals(taskGroup.getStatus());
     }
 
-    /**
-     * Acquire the task group slot for the given {@link TaskInstance}.
-     * <p>
-     * When taskInstance want to acquire a TaskGroup slot, should call this method. If acquire successfully, will create a TaskGroupQueue in db which is in queue and status is {@link TaskGroupQueueStatus#WAIT_QUEUE}.
-     * The TaskInstance shouldn't dispatch until there exist available slot, the taskGroupCoordinator notify it.
-     *
-     * @param taskInstance the task instance which want to acquire task group slot.
-     * @throws IllegalArgumentException if the taskInstance is null or the used taskGroup doesn't exist.
-     */
+    @Override
     public void acquireTaskGroupSlot(TaskInstance taskInstance) {
         if (taskInstance == null || taskInstance.getTaskGroupId() <= 0) {
             throw new IllegalArgumentException("The current TaskInstance does not use task group");
@@ -382,7 +352,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
                 .taskId(taskInstance.getId())
                 .taskName(taskInstance.getName())
                 .groupId(taskInstance.getTaskGroupId())
-                .processId(taskInstance.getProcessInstanceId())
+                .workflowInstanceId(taskInstance.getWorkflowInstanceId())
                 .priority(taskInstance.getTaskGroupPriority())
                 .inQueue(Flag.YES.getCode())
                 .forceStart(Flag.NO.getCode())
@@ -394,12 +364,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         taskGroupQueueDao.insert(taskGroupQueue);
     }
 
-    /**
-     * If the TaskInstance is using TaskGroup then it need to release TaskGroupSlot.
-     *
-     * @param taskInstance taskInsatnce
-     * @return true if the TaskInstance need to release TaskGroupSlot
-     */
+    @Override
     public boolean needToReleaseTaskGroupSlot(TaskInstance taskInstance) {
         if (taskInstance == null) {
             throw new IllegalArgumentException("The TaskInstance is null");
@@ -411,15 +376,7 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         return true;
     }
 
-    /**
-     * Release the task group slot for the given {@link TaskInstance}.
-     * <p>
-     * When taskInstance want to release a TaskGroup slot, should call this method. The release method will delete the taskGroupQueue.
-     * This method is idempotent, this means that if the task group slot is already released, this method will do nothing.
-     *
-     * @param taskInstance the task instance which want to release task group slot.
-     * @throws IllegalArgumentException If the taskInstance is null or the task doesn't use task group.
-     */
+    @Override
     public void releaseTaskGroupSlot(TaskInstance taskInstance) {
         if (taskInstance == null) {
             throw new IllegalArgumentException("The TaskInstance is null");
@@ -448,10 +405,10 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
                     "The TaskInstance: " + taskInstance.getId() + " state is " + taskInstance.getState()
                             + ", no need to notify");
         }
-        WorkflowInstance workflowInstance = workflowInstanceDao.queryById(taskInstance.getProcessInstanceId());
+        WorkflowInstance workflowInstance = workflowInstanceDao.queryById(taskInstance.getWorkflowInstanceId());
         if (workflowInstance == null) {
             throw new UnsupportedOperationException(
-                    "The WorkflowInstance: " + taskInstance.getProcessInstanceId()
+                    "The WorkflowInstance: " + taskInstance.getWorkflowInstanceId()
                             + " is not exist, no need to notify");
         }
         if (workflowInstance.getState() != WorkflowExecutionStatus.RUNNING_EXECUTION) {
@@ -488,4 +445,21 @@ public class TaskGroupCoordinator extends BaseDaemonThread {
         log.info("Success release TaskGroupQueue: {}", taskGroupQueue);
     }
 
+    @Override
+    public synchronized void close() {
+        if (!flag) {
+            log.warn("TaskGroupCoordinator is already closed");
+            return;
+        }
+        flag = false;
+        try {
+            if (internalThread != null) {
+                internalThread.interrupt();
+            }
+        } catch (Exception ex) {
+            log.error("Close internalThread failed", ex);
+        }
+        internalThread = null;
+        log.info("TaskGroupCoordinator closed");
+    }
 }

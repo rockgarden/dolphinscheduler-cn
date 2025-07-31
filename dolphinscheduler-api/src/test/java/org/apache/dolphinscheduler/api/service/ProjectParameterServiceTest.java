@@ -21,6 +21,7 @@ import static org.apache.dolphinscheduler.api.utils.ServiceTestUtil.getGeneralUs
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
@@ -90,9 +91,9 @@ public class ProjectParameterServiceTest {
         try (MockedStatic<CodeGenerateUtils> ignored = Mockito.mockStatic(CodeGenerateUtils.class)) {
             when(CodeGenerateUtils.genCode()).thenThrow(CodeGenerateUtils.CodeGenerateException.class);
 
-            result = projectParameterService.createProjectParameter(loginUser, projectCode, "key", "value",
-                    DataType.VARCHAR.name());
-            assertEquals(Status.CREATE_PROJECT_PARAMETER_ERROR.getCode(), result.getCode());
+            assertThrows(CodeGenerateUtils.CodeGenerateException.class,
+                    () -> projectParameterService.createProjectParameter(loginUser, projectCode, "key", "value",
+                            DataType.VARCHAR.name()));
         }
 
         // PROJECT_PARAMETER_ALREADY_EXISTS
@@ -114,6 +115,9 @@ public class ProjectParameterServiceTest {
         result = projectParameterService.createProjectParameter(loginUser, projectCode, "key1", "value",
                 DataType.VARCHAR.name());
         assertEquals(Status.SUCCESS.getCode(), result.getCode());
+
+        ProjectParameter projectParameter = (ProjectParameter) result.getData();
+        assertEquals(loginUser.getId(), projectParameter.getOperator());
     }
 
     @Test

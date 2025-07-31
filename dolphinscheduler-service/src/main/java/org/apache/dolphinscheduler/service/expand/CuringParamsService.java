@@ -34,22 +34,6 @@ import lombok.NonNull;
 public interface CuringParamsService {
 
     /**
-     * time function need expand
-     * @param placeholderName
-     * @return
-     */
-    boolean timeFunctionNeedExpand(String placeholderName);
-
-    /**
-     * time function extension
-     * @param processInstanceId
-     * @param timezone
-     * @param placeholderName
-     * @return
-     */
-    String timeFunctionExtension(Integer processInstanceId, String timezone, String placeholderName);
-
-    /**
      * convert parameter placeholders
      * @param val
      * @param allParamMap
@@ -59,7 +43,7 @@ public interface CuringParamsService {
 
     /**
      * curing global params
-     * @param processInstanceId
+     * @param workflowInstanceId
      * @param globalParamMap
      * @param globalParamList
      * @param commandType
@@ -67,7 +51,7 @@ public interface CuringParamsService {
      * @param timezone
      * @return
      */
-    String curingGlobalParams(Integer processInstanceId, Map<String, String> globalParamMap,
+    String curingGlobalParams(Integer workflowInstanceId, Map<String, String> globalParamMap,
                               List<Property> globalParamList, CommandType commandType, Date scheduleTime,
                               String timezone);
 
@@ -76,11 +60,15 @@ public interface CuringParamsService {
      * @param parameters
      * @param taskInstance
      * @param workflowInstance
+     * @param projectName
+     * @param workflowDefinitionName
      * @return
      */
     Map<String, Property> paramParsingPreparation(@NonNull TaskInstance taskInstance,
                                                   @NonNull AbstractParameters parameters,
-                                                  @NonNull WorkflowInstance workflowInstance);
+                                                  @NonNull WorkflowInstance workflowInstance,
+                                                  String projectName,
+                                                  String workflowDefinitionName);
 
     /**
      * Parse workflow star parameter

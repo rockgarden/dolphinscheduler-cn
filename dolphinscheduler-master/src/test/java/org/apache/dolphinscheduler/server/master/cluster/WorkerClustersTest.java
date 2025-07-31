@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dolphinscheduler.server.master.cluster;
 
 import static com.google.common.truth.Truth.assertThat;
@@ -39,12 +40,12 @@ class WorkerClustersTest {
                 .addrList(normalWorkerServerMetadata.getAddress())
                 .build();
         workerClusters.onWorkerGroupAdd(Lists.newArrayList(workerGroup));
-        assertThat(workerClusters.getWorkerServerAddressByGroup("flinkCluster"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("flinkCluster"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
 
         workerClusters.onWorkerGroupDelete(Lists.newArrayList(workerGroup));
         Truth.assertThat(workerClusters.containsWorkerGroup("flinkCluster")).isFalse();
-        assertThat(workerClusters.getWorkerServerAddressByGroup("flinkCluster")).isEmpty();
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("flinkCluster")).isEmpty();
     }
 
     @Test
@@ -58,7 +59,7 @@ class WorkerClustersTest {
                 .addrList(normalWorkerServerMetadata.getAddress())
                 .build();
         workerClusters.onWorkerGroupAdd(Lists.newArrayList(workerGroup));
-        assertThat(workerClusters.getWorkerServerAddressByGroup("flinkCluster"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("flinkCluster"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
     }
 
@@ -73,7 +74,7 @@ class WorkerClustersTest {
                 .addrList(normalWorkerServerMetadata.getAddress())
                 .build();
         workerClusters.onWorkerGroupAdd(Lists.newArrayList(workerGroup));
-        assertThat(workerClusters.getWorkerServerAddressByGroup("flinkCluster"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("flinkCluster"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
 
         WorkerGroup updatedWorkerGroup = WorkerGroup.builder()
@@ -81,7 +82,7 @@ class WorkerClustersTest {
                 .addrList("")
                 .build();
         workerClusters.onWorkerGroupChange(Lists.newArrayList(updatedWorkerGroup));
-        assertThat(workerClusters.getWorkerServerAddressByGroup("flinkCluster")).isEmpty();
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("flinkCluster")).isEmpty();
         assertThat(workerClusters.containsWorkerGroup("flinkCluster")).isTrue();
     }
 
@@ -93,7 +94,7 @@ class WorkerClustersTest {
         WorkerClusters workerClusters = new WorkerClusters();
         workerClusters.onServerAdded(normalWorkerServerMetadata);
         workerClusters.onServerAdded(busyWorkerServerMetadata);
-        assertThat(workerClusters.getWorkerServerAddressByGroup("default"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress(), busyWorkerServerMetadata.getAddress());
         assertThat(workerClusters.getNormalWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
@@ -109,7 +110,7 @@ class WorkerClustersTest {
         workerClusters.onServerAdded(busyWorkerServerMetadata);
         workerClusters.onServerRemove(busyWorkerServerMetadata);
 
-        assertThat(workerClusters.getWorkerServerAddressByGroup("default"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
         assertThat(workerClusters.getNormalWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress());
@@ -136,7 +137,7 @@ class WorkerClustersTest {
 
         workerClusters.onServerUpdate(workerServerMetadata);
 
-        assertThat(workerClusters.getWorkerServerAddressByGroup("default"))
+        assertThat(workerClusters.getDbWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress(), workerServerMetadata.getAddress());
         assertThat(workerClusters.getNormalWorkerServerAddressByGroup("default"))
                 .containsExactly(normalWorkerServerMetadata.getAddress(), workerServerMetadata.getAddress());

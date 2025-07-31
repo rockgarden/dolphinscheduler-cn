@@ -199,7 +199,7 @@ export default defineComponent({
     const restructureForm = async (form: any) => {
       await initProjectPreferences(props.row.projectCode)
       if (projectPreferences.value?.taskPriority) {
-        form.processInstancePriority = projectPreferences.value.taskPriority
+        form.workflowInstancePriority = projectPreferences.value.taskPriority
       }
       if (projectPreferences.value?.warningType) {
         form.warningType = projectPreferences.value.warningType
@@ -387,12 +387,12 @@ export default defineComponent({
           )}
           <NFormItem
             label={t('project.workflow.workflow_priority')}
-            path='processInstancePriority'
+            path='workflowInstancePriority'
           >
             <NSelect
               options={this.generalPriorityList()}
               renderLabel={this.renderLabel}
-              v-model:value={this.startForm.processInstancePriority}
+              v-model:value={this.startForm.workflowInstancePriority}
             />
           </NFormItem>
           <NFormItem
@@ -652,13 +652,6 @@ export default defineComponent({
               checkedValue={1}
               uncheckedValue={0}
               v-model:value={this.startForm.dryRun}
-            />
-          </NFormItem>
-          <NFormItem label={t('project.workflow.whether_test')} path='testFlag'>
-            <NSwitch
-              checkedValue={1}
-              uncheckedValue={0}
-              v-model:value={this.startForm.testFlag}
             />
           </NFormItem>
         </NForm>

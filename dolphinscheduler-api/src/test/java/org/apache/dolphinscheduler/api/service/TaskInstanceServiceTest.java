@@ -26,7 +26,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 
-import org.apache.dolphinscheduler.api.dto.taskInstance.TaskInstanceRemoveCacheResponse;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.impl.ProjectServiceImpl;
@@ -180,7 +179,7 @@ public class TaskInstanceServiceTest {
                 Mockito.any()))
                         .thenReturn(pageReturn);
         when(usersService.queryUser(workflowInstance.getExecutorId())).thenReturn(loginUser);
-        when(processService.findWorkflowInstanceDetailById(taskInstance.getProcessInstanceId()))
+        when(processService.findWorkflowInstanceDetailById(taskInstance.getWorkflowInstanceId()))
                 .thenReturn(Optional.of(workflowInstance));
 
         Result successRes = taskInstanceService.queryTaskListPaging(loginUser,
@@ -370,7 +369,7 @@ public class TaskInstanceServiceTest {
         TaskInstance task = getTaskInstance();
         doNothing().when(projectService).checkProjectAndAuthThrowException(user, task.getProjectCode(), FORCED_SUCCESS);
         when(taskInstanceDao.queryOptionalById(task.getId())).thenReturn(Optional.of(task));
-        when(workflowInstanceDao.queryOptionalById(task.getProcessInstanceId())).thenReturn(Optional.empty());
+        when(workflowInstanceDao.queryOptionalById(task.getWorkflowInstanceId())).thenReturn(Optional.empty());
 
         assertThrowsServiceException(Status.WORKFLOW_INSTANCE_NOT_EXIST,
                 () -> taskInstanceService.forceTaskSuccess(user, task.getProjectCode(), task.getId()));
@@ -385,7 +384,7 @@ public class TaskInstanceServiceTest {
         workflowInstance.setState(WorkflowExecutionStatus.RUNNING_EXECUTION);
         doNothing().when(projectService).checkProjectAndAuthThrowException(user, projectCode, FORCED_SUCCESS);
         when(taskInstanceDao.queryOptionalById(task.getId())).thenReturn(Optional.of(task));
-        when(workflowInstanceDao.queryOptionalById(task.getProcessInstanceId()))
+        when(workflowInstanceDao.queryOptionalById(task.getWorkflowInstanceId()))
                 .thenReturn(Optional.of(workflowInstance));
 
         assertThrowsServiceException(
@@ -402,7 +401,7 @@ public class TaskInstanceServiceTest {
         workflowInstance.setState(WorkflowExecutionStatus.FAILURE);
         doNothing().when(projectService).checkProjectAndAuthThrowException(user, task.getProjectCode(), FORCED_SUCCESS);
         when(taskInstanceDao.queryOptionalById(task.getId())).thenReturn(Optional.of(task));
-        when(workflowInstanceDao.queryOptionalById(task.getProcessInstanceId()))
+        when(workflowInstanceDao.queryOptionalById(task.getWorkflowInstanceId()))
                 .thenReturn(Optional.of(workflowInstance));
 
         assertThrowsServiceException(
@@ -410,29 +409,4 @@ public class TaskInstanceServiceTest {
                 () -> taskInstanceService.forceTaskSuccess(user, task.getProjectCode(), task.getId()));
     }
 
-    @Test
-    public void testRemoveTaskInstanceCache() {
-        User user = getAdminUser();
-        long projectCode = 1L;
-        Project project = getProject(projectCode);
-        int taskId = 1;
-        TaskInstance task = getTaskInstance();
-        String cacheKey = "950311f3597f9198976cd3fd69e208e5b9ba6750";
-        task.setCacheKey(cacheKey);
-
-        when(projectMapper.queryByCode(projectCode)).thenReturn(project);
-        when(taskInstanceMapper.selectById(1)).thenReturn(task);
-        when(taskInstanceDao.queryByCacheKey(cacheKey)).thenReturn(task, null);
-        when(taskInstanceDao.updateById(task)).thenReturn(true);
-
-        TaskInstanceRemoveCacheResponse response =
-                taskInstanceService.removeTaskInstanceCache(user, projectCode, taskId);
-        Assertions.assertEquals(Status.SUCCESS.getCode(), response.getCode());
-
-        when(taskInstanceMapper.selectById(1)).thenReturn(null);
-        TaskInstanceRemoveCacheResponse responseNotFoundTask =
-                taskInstanceService.removeTaskInstanceCache(user, projectCode, taskId);
-        Assertions.assertEquals(Status.TASK_INSTANCE_NOT_FOUND.getCode(), responseNotFoundTask.getCode());
-
-    }
 }

@@ -57,10 +57,9 @@ public interface TaskInstanceDao extends IDao<TaskInstance> {
      * Query list of valid task instance by workflow instance id
      *
      * @param workflowInstanceId workflowInstanceId
-     * @param testFlag          test flag
      * @return list of valid task instance
      */
-    List<TaskInstance> queryValidTaskListByWorkflowInstanceId(Integer workflowInstanceId, int testFlag);
+    List<TaskInstance> queryValidTaskListByWorkflowInstanceId(Integer workflowInstanceId);
 
     /**
      * Query list of task instance by workflow instance id and task code
@@ -79,22 +78,6 @@ public interface TaskInstanceDao extends IDao<TaskInstance> {
      */
     List<TaskInstance> queryPreviousTaskListByWorkflowInstanceId(Integer workflowInstanceId);
 
-    /**
-     * find task instance by cache_key
-     *
-     * @param cacheKey cache key
-     * @return task instance
-     */
-    TaskInstance queryByCacheKey(String cacheKey);
-
-    /**
-     * clear task instance cache by cache_key
-     *
-     * @param cacheKey cache key
-     * @return task instance
-     */
-    Boolean clearCacheByCacheKey(String cacheKey);
-
     void deleteByWorkflowInstanceId(int workflowInstanceId);
 
     List<TaskInstance> queryByWorkflowInstanceId(Integer workflowInstanceId);
@@ -104,22 +87,20 @@ public interface TaskInstanceDao extends IDao<TaskInstance> {
      *
      * @param workflowInstanceId Task's parent workflow instance id
      * @param taskCodes         taskCodes
-     * @param testFlag          test flag
      * @return task instance list
      */
     List<TaskInstance> queryLastTaskInstanceListIntervalInWorkflowInstance(Integer workflowInstanceId,
-                                                                           Set<Long> taskCodes, int testFlag);
+                                                                           Set<Long> taskCodes);
 
     /**
      * find last task instance corresponding to taskCode in the date interval
      *
      * @param workflowInstanceId Task's parent workflow instance id
      * @param depTaskCode       taskCode
-     * @param testFlag          test flag
      * @return task instance
      */
     TaskInstance queryLastTaskInstanceIntervalInWorkflowInstance(Integer workflowInstanceId,
-                                                                 long depTaskCode, int testFlag);
+                                                                 long depTaskCode);
 
     void updateTaskInstanceState(Integer taskInstanceId, TaskExecutionStatus originState,
                                  TaskExecutionStatus targetState);

@@ -31,7 +31,6 @@ import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
-import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils.CodeGenerateException;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
 import org.apache.dolphinscheduler.dao.entity.ProjectWorkflowDefinitionCount;
@@ -120,22 +119,16 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
 
         Date now = new Date();
 
-        try {
-            project = Project
-                    .builder()
-                    .name(name)
-                    .code(CodeGenerateUtils.genCode())
-                    .description(desc)
-                    .userId(loginUser.getId())
-                    .userName(loginUser.getUserName())
-                    .createTime(now)
-                    .updateTime(now)
-                    .build();
-        } catch (CodeGenerateException e) {
-            log.error("Generate workflow definition code error.", e);
-            putMsg(result, Status.CREATE_PROJECT_ERROR);
-            return result;
-        }
+        project = Project
+                .builder()
+                .name(name)
+                .code(CodeGenerateUtils.genCode())
+                .description(desc)
+                .userId(loginUser.getId())
+                .userName(loginUser.getUserName())
+                .createTime(now)
+                .updateTime(now)
+                .build();
 
         if (projectMapper.insert(project) > 0) {
             log.info("Project is created and id is :{}", project.getId());
@@ -391,13 +384,18 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
                 project.setPerm(Constants.DEFAULT_ADMIN_PERMISSION);
             }
         }
+        if (CollectionUtils.isEmpty(projectList)) {
+            result.setData(pageInfo);
+            putMsg(result, Status.SUCCESS);
+            return result;
+        }
         List<User> userList = userMapper.selectByIds(projectList.stream()
                 .map(Project::getUserId).distinct().collect(Collectors.toList()));
         Map<Integer, String> userMap = userList.stream().collect(Collectors.toMap(User::getId, User::getUserName));
-        List<ProjectWorkflowDefinitionCount> projectWorkflowDefinitionCountList =
-                workflowDefinitionMapper.queryProjectProcessDefinitionCountByProjectCodes(
-                        projectList.stream().map(Project::getCode).distinct().collect(Collectors.toList()));
-        Map<Long, Integer> projectWorkflowDefinitionCountMap = projectWorkflowDefinitionCountList.stream()
+        List<Long> projectCodes = projectList.stream().map(Project::getCode).distinct().collect(Collectors.toList());
+        Map<Long, Integer> projectWorkflowDefinitionCountMap = workflowDefinitionMapper
+                .queryProjectWorkflowDefinitionCountByProjectCodes(projectCodes)
+                .stream()
                 .collect(Collectors.toMap(ProjectWorkflowDefinitionCount::getProjectCode,
                         ProjectWorkflowDefinitionCount::getCount));
         for (Project project : projectList) {

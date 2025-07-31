@@ -20,6 +20,7 @@ package org.apache.dolphinscheduler.server.master.cluster;
 import org.apache.dolphinscheduler.server.master.config.MasterConfig;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,34 +30,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class MasterSlotManager implements IMasterSlotReBalancer {
 
-    private final MasterClusters masterClusters;
-
     private final MasterConfig masterConfig;
 
     private volatile int currentSlot = -1;
 
     private volatile int totalSlots = 0;
 
-    public MasterSlotManager(ClusterManager clusterManager, MasterConfig masterConfig) {
+    public MasterSlotManager(final MasterConfig masterConfig) {
         this.masterConfig = masterConfig;
-        this.masterClusters = clusterManager.getMasterClusters();
-        this.masterClusters.registerListener(new IClusters.IClustersChangeListener<MasterServerMetadata>() {
-
-            @Override
-            public void onServerAdded(MasterServerMetadata server) {
-                doReBalance(masterClusters.getNormalServers());
-            }
-
-            @Override
-            public void onServerRemove(MasterServerMetadata server) {
-                doReBalance(masterClusters.getNormalServers());
-            }
-
-            @Override
-            public void onServerUpdate(MasterServerMetadata server) {
-                doReBalance(masterClusters.getNormalServers());
-            }
-        });
     }
 
     /**
@@ -79,6 +60,9 @@ public class MasterSlotManager implements IMasterSlotReBalancer {
 
     @Override
     public void doReBalance(List<MasterServerMetadata> normalMasterServers) {
+
+        normalMasterServers =
+                normalMasterServers.stream().sorted(MasterServerMetadata::compareTo).collect(Collectors.toList());
 
         int tmpCurrentSlot = -1;
         for (int i = 0; i < normalMasterServers.size(); i++) {

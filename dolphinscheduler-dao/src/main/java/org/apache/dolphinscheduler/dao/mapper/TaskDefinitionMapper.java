@@ -30,21 +30,18 @@ import java.util.List;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 
-/**
- * task definition mapper interface
- */
 public interface TaskDefinitionMapper extends BaseMapper<TaskDefinition> {
 
     /**
      * query task definition by name
      *
      * @param projectCode projectCode
-     * @param processCode processCode
+     * @param workflowDefinitionCode workflowDefinitionCode
      * @param name name
      * @return task definition
      */
     TaskDefinition queryByName(@Param("projectCode") long projectCode,
-                               @Param("processCode") long processCode,
+                               @Param("workflowDefinitionCode") long workflowDefinitionCode,
                                @Param("name") String name);
 
     /**
@@ -61,7 +58,7 @@ public interface TaskDefinitionMapper extends BaseMapper<TaskDefinition> {
      * @param projectCode projectCode
      * @return task definition list
      */
-    List<TaskDefinition> queryAllDefinitionList(@Param("projectCode") long projectCode);
+    List<String> queryAllTaskDefinitionWorkerGroups(@Param("projectCode") long projectCode);
 
     /**
      * count task definition group by user
@@ -108,7 +105,7 @@ public interface TaskDefinitionMapper extends BaseMapper<TaskDefinition> {
      * Filter task definition
      *
      * @param page page
-     * @param taskDefinition process definition object
+     * @param taskDefinition task definition
      * @return task definition IPage
      */
     IPage<TaskDefinition> filterTaskDefinition(IPage<TaskDefinition> page,

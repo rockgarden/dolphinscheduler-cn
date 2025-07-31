@@ -22,18 +22,18 @@ import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.Command;
 import org.apache.dolphinscheduler.dao.entity.TaskInstance;
 import org.apache.dolphinscheduler.dao.entity.WorkflowInstance;
-import org.apache.dolphinscheduler.dao.repository.TaskInstanceDao;
 import org.apache.dolphinscheduler.dao.repository.WorkflowInstanceDao;
 import org.apache.dolphinscheduler.extract.master.command.WorkflowFailoverCommandParam;
-import org.apache.dolphinscheduler.server.master.engine.TaskGroupCoordinator;
+import org.apache.dolphinscheduler.server.master.config.MasterConfig;
+import org.apache.dolphinscheduler.server.master.engine.ITaskGroupCoordinator;
 import org.apache.dolphinscheduler.server.master.engine.graph.IWorkflowGraph;
 import org.apache.dolphinscheduler.server.master.engine.graph.WorkflowExecutionGraph;
-import org.apache.dolphinscheduler.server.master.engine.graph.WorkflowGraphBfsVisitor;
+import org.apache.dolphinscheduler.server.master.engine.graph.WorkflowGraphTopologyLogicalVisitor;
 import org.apache.dolphinscheduler.server.master.engine.task.runnable.TaskExecutionRunnable;
 import org.apache.dolphinscheduler.server.master.engine.task.runnable.TaskExecutionRunnableBuilder;
-import org.apache.dolphinscheduler.server.master.runner.TaskExecutionContextFactory;
 import org.apache.dolphinscheduler.server.master.runner.WorkflowExecuteContext.WorkflowExecuteContextBuilder;
 
+import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -55,16 +55,13 @@ public class WorkflowFailoverCommandHandler extends AbstractCommandHandler {
     private WorkflowInstanceDao workflowInstanceDao;
 
     @Autowired
-    private TaskInstanceDao taskInstanceDao;
-
-    @Autowired
-    private TaskExecutionContextFactory taskExecutionContextFactory;
-
-    @Autowired
-    private TaskGroupCoordinator taskGroupCoordinator;
+    private ITaskGroupCoordinator taskGroupCoordinator;
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    @Autowired
+    private MasterConfig masterConfig;
 
     /**
      * Generate the recover workflow instance.
@@ -83,7 +80,7 @@ public class WorkflowFailoverCommandHandler extends AbstractCommandHandler {
     protected void assembleWorkflowInstance(
                                             final WorkflowExecuteContextBuilder workflowExecuteContextBuilder) {
         final Command command = workflowExecuteContextBuilder.getCommand();
-        final int workflowInstanceId = command.getProcessInstanceId();
+        final int workflowInstanceId = command.getWorkflowInstanceId();
         final WorkflowInstance workflowInstance = workflowInstanceDao.queryOptionalById(workflowInstanceId)
                 .orElseThrow(() -> new IllegalArgumentException("Cannot find WorkflowInstance:" + workflowInstanceId));
         final WorkflowFailoverCommandParam workflowFailoverCommandParam = JSONUtils.parseObject(
@@ -93,7 +90,9 @@ public class WorkflowFailoverCommandHandler extends AbstractCommandHandler {
             throw new IllegalArgumentException(
                     "The WorkflowFailoverCommandParam: " + command.getCommandParam() + " is invalid");
         }
+        workflowInstance.setRestartTime(new Date());
         workflowInstance.setState(workflowFailoverCommandParam.getWorkflowExecutionStatus());
+        workflowInstance.setHost(masterConfig.getMasterAddress());
         workflowInstanceDao.updateById(workflowInstance);
 
         workflowExecuteContextBuilder.setWorkflowInstance(workflowInstance);
@@ -119,6 +118,7 @@ public class WorkflowFailoverCommandHandler extends AbstractCommandHandler {
                             .builder()
                             .workflowExecutionGraph(workflowExecutionGraph)
                             .workflowDefinition(workflowExecuteContextBuilder.getWorkflowDefinition())
+                            .project(workflowExecuteContextBuilder.getProject())
                             .workflowInstance(workflowExecuteContextBuilder.getWorkflowInstance())
                             .taskDefinition(workflowGraph.getTaskNodeByName(task))
                             .taskInstance(taskInstanceMap.get(task))
@@ -129,13 +129,14 @@ public class WorkflowFailoverCommandHandler extends AbstractCommandHandler {
             workflowExecutionGraph.addEdge(task, successors);
         };
 
-        final WorkflowGraphBfsVisitor workflowGraphBfsVisitor = WorkflowGraphBfsVisitor.builder()
-                .taskDependType(workflowExecuteContextBuilder.getWorkflowInstance().getTaskDependType())
-                .onWorkflowGraph(workflowGraph)
-                .fromTask(parseStartNodesFromWorkflowInstance(workflowExecuteContextBuilder))
-                .doVisitFunction(taskExecutionRunnableCreator)
-                .build();
-        workflowGraphBfsVisitor.visit();
+        final WorkflowGraphTopologyLogicalVisitor workflowGraphTopologyLogicalVisitor =
+                WorkflowGraphTopologyLogicalVisitor.builder()
+                        .taskDependType(workflowExecuteContextBuilder.getWorkflowInstance().getTaskDependType())
+                        .onWorkflowGraph(workflowGraph)
+                        .fromTask(parseStartNodesFromWorkflowInstance(workflowExecuteContextBuilder))
+                        .doVisitFunction(taskExecutionRunnableCreator)
+                        .build();
+        workflowGraphTopologyLogicalVisitor.visit();
 
         workflowExecuteContextBuilder.setWorkflowExecutionGraph(workflowExecutionGraph);
     }

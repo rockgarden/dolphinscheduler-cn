@@ -42,7 +42,7 @@ public class TaskStartLifecycleEventHandler extends AbstractTaskLifecycleEventHa
         // So we need to initialize the task instance here.
         // Otherwise, we cannot find the statemachine by task instance state.
         if (!taskExecutionRunnable.isTaskInstanceInitialized()) {
-            taskExecutionRunnable.initializeTaskInstance();
+            taskExecutionRunnable.initializeFirstRunTaskInstance();
         }
         taskTimeoutMonitor(taskExecutionRunnable);
         super.handle(workflowExecutionRunnable, taskStartLifecycleEvent);
@@ -53,7 +53,7 @@ public class TaskStartLifecycleEventHandler extends AbstractTaskLifecycleEventHa
                        final IWorkflowExecutionRunnable workflowExecutionRunnable,
                        final ITaskExecutionRunnable taskExecutionRunnable,
                        final TaskStartLifecycleEvent event) {
-        taskStateAction.startEventAction(workflowExecutionRunnable, taskExecutionRunnable, event);
+        taskStateAction.onStartEvent(workflowExecutionRunnable, taskExecutionRunnable, event);
     }
 
     @Override

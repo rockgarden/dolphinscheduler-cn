@@ -47,13 +47,16 @@ import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters
 import org.apache.dolphinscheduler.plugin.task.api.utils.MapUtils;
 import org.apache.dolphinscheduler.plugin.task.api.utils.ParameterUtils;
 import org.apache.dolphinscheduler.plugin.task.api.utils.PropertyUtils;
+import org.apache.dolphinscheduler.plugin.task.api.utils.VarPoolUtils;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,9 +74,6 @@ import org.springframework.stereotype.Component;
 public class CuringParamsServiceImpl implements CuringParamsService {
 
     @Autowired
-    private TimePlaceholderResolverExpandService timePlaceholderResolverExpandService;
-
-    @Autowired
     private ProjectParameterMapper projectParameterMapper;
 
     @Override
@@ -86,20 +86,10 @@ public class CuringParamsServiceImpl implements CuringParamsService {
         return ParameterUtils.convertParameterPlaceholders(val, paramMap);
     }
 
-    @Override
-    public boolean timeFunctionNeedExpand(String placeholderName) {
-        return timePlaceholderResolverExpandService.timeFunctionNeedExpand(placeholderName);
-    }
-
-    @Override
-    public String timeFunctionExtension(Integer processInstanceId, String timezone, String placeholderName) {
-        return timePlaceholderResolverExpandService.timeFunctionExtension(processInstanceId, timezone, placeholderName);
-    }
-
     /**
      * here it is judged whether external expansion calculation is required and the calculation result is obtained
      *
-     * @param processInstanceId
+     * @param workflowInstanceId
      * @param globalParamMap
      * @param globalParamList
      * @param commandType
@@ -108,7 +98,7 @@ public class CuringParamsServiceImpl implements CuringParamsService {
      * @return
      */
     @Override
-    public String curingGlobalParams(Integer processInstanceId, Map<String, String> globalParamMap,
+    public String curingGlobalParams(Integer workflowInstanceId, Map<String, String> globalParamMap,
                                      List<Property> globalParamList, CommandType commandType, Date scheduleTime,
                                      String timezone) {
         if (globalParamList == null || globalParamList.isEmpty()) {
@@ -132,10 +122,6 @@ public class CuringParamsServiceImpl implements CuringParamsService {
             String val = entry.getValue();
             if (val.contains(Constants.FUNCTION_START_WITH)) {
                 String str = val;
-                // whether external scaling calculation is required
-                if (timeFunctionNeedExpand(val)) {
-                    str = timeFunctionExtension(processInstanceId, timezone, val);
-                }
                 resolveMap.put(entry.getKey(), str);
             }
         }
@@ -174,28 +160,34 @@ public class CuringParamsServiceImpl implements CuringParamsService {
     }
 
     /**
-     * the global parameters and local parameters used in the worker will be prepared here, and built-in parameters.
+     * Generate prepare params include project params, global parameters, local parameters, built-in parameters, varpool, start-up params.
+     * <p> The priority of the parameters is as follows:
+     * <p> varpool > command parameters > local parameters > global parameters > project parameters > built-in parameters
+     * todo: Use TaskRuntimeParams to represent this.
      *
      * @param taskInstance
      * @param parameters
      * @param workflowInstance
+     * @param projectName
+     * @param workflowDefinitionName
      * @return
      */
     @Override
     public Map<String, Property> paramParsingPreparation(@NonNull TaskInstance taskInstance,
                                                          @NonNull AbstractParameters parameters,
-                                                         @NonNull WorkflowInstance workflowInstance) {
+                                                         @NonNull WorkflowInstance workflowInstance,
+                                                         String projectName,
+                                                         String workflowDefinitionName) {
         Map<String, Property> prepareParamsMap = new HashMap<>();
 
         // assign value to definedParams here
-        Map<String, Property> globalParams = setGlobalParamsMap(workflowInstance);
+        Map<String, Property> globalParams = parseGlobalParamsMap(workflowInstance);
 
         // combining local and global parameters
         Map<String, Property> localParams = parameters.getInputLocalParametersMap();
 
         // stream pass params
-        parameters.setVarPool(taskInstance.getVarPool());
-        Map<String, Property> varParams = parameters.getVarPoolMap();
+        List<Property> varPools = parseVarPool(taskInstance);
 
         // if it is a complement,
         // you need to pass in the task instance id to locate the time
@@ -204,7 +196,8 @@ public class CuringParamsServiceImpl implements CuringParamsService {
         String timeZone = commandParam.getTimeZone();
 
         // built-in params
-        Map<String, String> builtInParams = setBuiltInParamsMap(taskInstance, workflowInstance, timeZone);
+        Map<String, String> builtInParams =
+                setBuiltInParamsMap(taskInstance, workflowInstance, timeZone, projectName, workflowDefinitionName);
 
         // project-level params
         Map<String, Property> projectParams = getProjectParameterMap(taskInstance.getProjectCode());
@@ -221,10 +214,6 @@ public class CuringParamsServiceImpl implements CuringParamsService {
             prepareParamsMap.putAll(globalParams);
         }
 
-        if (MapUtils.isNotEmpty(varParams)) {
-            prepareParamsMap.putAll(varParams);
-        }
-
         if (MapUtils.isNotEmpty(localParams)) {
             prepareParamsMap.putAll(localParams);
         }
@@ -232,6 +221,17 @@ public class CuringParamsServiceImpl implements CuringParamsService {
         if (CollectionUtils.isNotEmpty(commandParam.getCommandParams())) {
             prepareParamsMap.putAll(commandParam.getCommandParams().stream()
                     .collect(Collectors.toMap(Property::getProp, Function.identity())));
+        }
+
+        if (CollectionUtils.isNotEmpty(varPools)) {
+            // overwrite the in parameter by varPool
+            for (Property varPool : varPools) {
+                Property property = prepareParamsMap.get(varPool.getProp());
+                if (property == null || property.getDirect() != Direct.IN) {
+                    continue;
+                }
+                property.setValue(varPool.getValue());
+            }
         }
 
         Iterator<Map.Entry<String, Property>> iter = prepareParamsMap.entrySet().iterator();
@@ -247,14 +247,10 @@ public class CuringParamsServiceImpl implements CuringParamsService {
                  *  and there are no variables in them.
                  */
                 String val = property.getValue();
-                // whether external scaling calculation is required
-                if (timeFunctionNeedExpand(val)) {
-                    val = timeFunctionExtension(taskInstance.getProcessInstanceId(), timeZone, val);
-                } else {
-                    // handle some chain parameter assign, such as `{"var1": "${var2}", "var2": 1}` should be convert to
-                    // `{"var1": 1, "var2": 1}`
-                    val = convertParameterPlaceholders(val, prepareParamsMap);
-                }
+
+                // handle some chain parameter assign, such as `{"var1": "${var2}", "var2": 1}` should be convert to
+                // `{"var1": 1, "var2": 1}`
+                val = convertParameterPlaceholders(val, prepareParamsMap);
                 property.setValue(val);
             }
         }
@@ -272,10 +268,14 @@ public class CuringParamsServiceImpl implements CuringParamsService {
      *
      * @param taskInstance
      * @param timeZone
+     * @param projectName
+     * @param workflowDefinitionName
      */
     private Map<String, String> setBuiltInParamsMap(@NonNull TaskInstance taskInstance,
                                                     WorkflowInstance workflowInstance,
-                                                    String timeZone) {
+                                                    String timeZone,
+                                                    String projectName,
+                                                    String workflowDefinitionName) {
         CommandType commandType = workflowInstance.getCmdTypeIfComplement();
         Date scheduleTime = workflowInstance.getScheduleTime();
 
@@ -287,27 +287,28 @@ public class CuringParamsServiceImpl implements CuringParamsService {
         params.put(PARAMETER_TASK_INSTANCE_ID, Integer.toString(taskInstance.getId()));
         params.put(PARAMETER_TASK_DEFINITION_NAME, taskInstance.getName());
         params.put(PARAMETER_TASK_DEFINITION_CODE, Long.toString(taskInstance.getTaskCode()));
-        params.put(PARAMETER_WORKFLOW_INSTANCE_ID, Integer.toString(taskInstance.getProcessInstanceId()));
-        // todo: set workflow definitionName and projectName
-        params.put(PARAMETER_WORKFLOW_DEFINITION_NAME, null);
-        params.put(PARAMETER_WORKFLOW_DEFINITION_CODE, Long.toString(workflowInstance.getProcessDefinitionCode()));
-        params.put(PARAMETER_PROJECT_NAME, null);
+        params.put(PARAMETER_WORKFLOW_INSTANCE_ID, Integer.toString(taskInstance.getWorkflowInstanceId()));
+        params.put(PARAMETER_WORKFLOW_DEFINITION_NAME, workflowDefinitionName);
+        params.put(PARAMETER_WORKFLOW_DEFINITION_CODE, Long.toString(workflowInstance.getWorkflowDefinitionCode()));
+        params.put(PARAMETER_PROJECT_NAME, projectName);
         params.put(PARAMETER_PROJECT_CODE, Long.toString(workflowInstance.getProjectCode()));
         return params;
     }
 
-    private Map<String, Property> setGlobalParamsMap(WorkflowInstance workflowInstance) {
-        Map<String, Property> globalParamsMap = new HashMap<>(16);
-
-        // global params string
-        String globalParamsStr = workflowInstance.getGlobalParams();
-        if (globalParamsStr != null) {
-            List<Property> globalParamsList = JSONUtils.toList(globalParamsStr, Property.class);
-            globalParamsMap
-                    .putAll(globalParamsList.stream()
-                            .collect(Collectors.toMap(Property::getProp, Function.identity())));
+    private Map<String, Property> parseGlobalParamsMap(WorkflowInstance workflowInstance) {
+        final Map<String, Property> globalParametersMaps = new LinkedHashMap<>();
+        if (StringUtils.isNotEmpty(workflowInstance.getGlobalParams())) {
+            JSONUtils.toList(workflowInstance.getGlobalParams(), Property.class)
+                    .forEach(property -> globalParametersMaps.put(property.getProp(), property));
         }
-        return globalParamsMap;
+        return globalParametersMaps;
+    }
+
+    private List<Property> parseVarPool(TaskInstance taskInstance) {
+        if (StringUtils.isNotEmpty(taskInstance.getVarPool())) {
+            return VarPoolUtils.deserializeVarPool(taskInstance.getVarPool());
+        }
+        return Collections.emptyList();
     }
 
     @Override

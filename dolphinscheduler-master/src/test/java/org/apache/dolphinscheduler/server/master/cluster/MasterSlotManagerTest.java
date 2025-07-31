@@ -22,6 +22,9 @@ import static com.google.common.truth.Truth.assertThat;
 import org.apache.dolphinscheduler.common.enums.ServerStatus;
 import org.apache.dolphinscheduler.server.master.config.MasterConfig;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,16 +32,16 @@ class MasterSlotManagerTest {
 
     private MasterSlotManager masterSlotManager;
 
-    private ClusterManager clusterManager;
+    private MasterClusters masterClusters;
 
     private MasterConfig masterConfig;
 
     @BeforeEach
     public void setUp() {
-        clusterManager = new ClusterManager();
+        masterClusters = new MasterClusters();
         masterConfig = new MasterConfig();
         masterConfig.setMasterAddress("127.0.0.1:5678");
-        masterSlotManager = new MasterSlotManager(clusterManager, masterConfig);
+        masterSlotManager = new MasterSlotManager(masterConfig);
         MasterServerMetadata master1 = MasterServerMetadata.builder()
                 .cpuUsage(0.2)
                 .memoryUsage(0.4)
@@ -63,10 +66,11 @@ class MasterSlotManagerTest {
                 .serverStatus(ServerStatus.BUSY)
                 .address("127.0.0.4:5679")
                 .build();
-        clusterManager.getMasterClusters().onServerAdded(master1);
-        clusterManager.getMasterClusters().onServerAdded(master2);
-        clusterManager.getMasterClusters().onServerAdded(master3);
-        clusterManager.getMasterClusters().onServerAdded(master4);
+        this.masterClusters.registerListener(new MasterSlotChangeListenerAdaptor(masterSlotManager, masterClusters));
+        masterClusters.onServerAdded(master1);
+        masterClusters.onServerAdded(master2);
+        masterClusters.onServerAdded(master3);
+        masterClusters.onServerAdded(master4);
     }
 
     @Test
@@ -98,9 +102,67 @@ class MasterSlotManagerTest {
                 .serverStatus(ServerStatus.BUSY)
                 .address("127.0.0.4:5679")
                 .build();
-        clusterManager.getMasterClusters().onServerRemove(master2);
-        clusterManager.getMasterClusters().onServerRemove(master3);
+        masterClusters.onServerRemove(master2);
+        masterClusters.onServerRemove(master3);
         // After doReBalance, the total master slots should be 2
         assertThat(masterSlotManager.getTotalMasterSlots()).isEqualTo(2);
+    }
+
+    @Test
+    void doReBalanceWithAscendingOrderAddress() {
+        final String IP_ORDER_1 = "127.0.0.1:8001";
+        final String IP_ORDER_2 = "127.0.0.1:8002";
+
+        masterConfig = new MasterConfig();
+        masterConfig.setMasterAddress(IP_ORDER_1);
+        MasterSlotManager tMasterSlotManager = new MasterSlotManager(masterConfig);
+        MasterServerMetadata normalMasterServerMetadata01 = MasterServerMetadata.builder()
+                .address(IP_ORDER_1)
+                .serverStatus(ServerStatus.NORMAL)
+                .build();
+
+        MasterServerMetadata normalMasterServerMetadata02 = MasterServerMetadata.builder()
+                .address(IP_ORDER_2)
+                .serverStatus(ServerStatus.NORMAL)
+                .build();
+
+        List<MasterServerMetadata> normalMasterServers = new ArrayList<>();
+        // asc
+        normalMasterServers.add(normalMasterServerMetadata01);
+        normalMasterServers.add(normalMasterServerMetadata02);
+
+        tMasterSlotManager.doReBalance(normalMasterServers);
+
+        assertThat(tMasterSlotManager.getCurrentMasterSlot()).isEqualTo(0);
+        assertThat(tMasterSlotManager.getTotalMasterSlots()).isEqualTo(2);
+    }
+
+    @Test
+    void getNormalServersInAscendingOrder() {
+        final String IP_ORDER_1 = "127.0.0.1:8001";
+        final String IP_ORDER_2 = "127.0.0.1:8002";
+
+        masterConfig = new MasterConfig();
+        masterConfig.setMasterAddress(IP_ORDER_1);
+        MasterSlotManager tMasterSlotManager = new MasterSlotManager(masterConfig);
+        MasterServerMetadata normalMasterServerMetadata01 = MasterServerMetadata.builder()
+                .address(IP_ORDER_1)
+                .serverStatus(ServerStatus.NORMAL)
+                .build();
+
+        MasterServerMetadata normalMasterServerMetadata02 = MasterServerMetadata.builder()
+                .address(IP_ORDER_2)
+                .serverStatus(ServerStatus.NORMAL)
+                .build();
+
+        List<MasterServerMetadata> normalMasterServers = new ArrayList<>();
+        // desc
+        normalMasterServers.add(normalMasterServerMetadata02);
+        normalMasterServers.add(normalMasterServerMetadata01);
+
+        tMasterSlotManager.doReBalance(normalMasterServers);
+
+        assertThat(tMasterSlotManager.getCurrentMasterSlot()).isEqualTo(0);
+        assertThat(tMasterSlotManager.getTotalMasterSlots()).isEqualTo(2);
     }
 }

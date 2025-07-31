@@ -17,7 +17,6 @@
 
 package org.apache.dolphinscheduler.extract.master.transportor.workflow;
 
-import org.apache.dolphinscheduler.common.enums.CommandType;
 import org.apache.dolphinscheduler.common.enums.FailureStrategy;
 import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.enums.Priority;
@@ -55,8 +54,6 @@ public class WorkflowBackfillTriggerRequest {
     @Builder.Default
     private TaskDependType taskDependType = TaskDependType.TASK_POST;
 
-    private CommandType execType;
-
     @Builder.Default
     private WarningType warningType = WarningType.NONE;
 
@@ -76,8 +73,5 @@ public class WorkflowBackfillTriggerRequest {
 
     @Builder.Default
     private Flag dryRun = Flag.NO;
-
-    @Builder.Default
-    private Flag testFlag = Flag.NO;
 
 }

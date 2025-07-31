@@ -23,9 +23,6 @@ import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
-import org.springframework.cache.annotation.CacheConfig;
-import org.springframework.cache.annotation.Cacheable;
-
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -33,7 +30,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 /**
  * workflow definition log mapper interface
  */
-@CacheConfig(cacheNames = "processDefinition", keyGenerator = "cacheKeyGenerator")
+
 public interface WorkflowDefinitionLogMapper extends BaseMapper<WorkflowDefinitionLog> {
 
     /**
@@ -43,7 +40,7 @@ public interface WorkflowDefinitionLogMapper extends BaseMapper<WorkflowDefiniti
      * @param version version number
      * @return the workflow definition version info
      */
-    @Cacheable(sync = true)
+
     WorkflowDefinitionLog queryByDefinitionCodeAndVersion(@Param("code") long code, @Param("version") int version);
 
     /**
@@ -82,9 +79,9 @@ public interface WorkflowDefinitionLogMapper extends BaseMapper<WorkflowDefiniti
      * @param projectCode project code
      * @return the paging workflow definition version list
      */
-    IPage<WorkflowDefinitionLog> queryProcessDefinitionVersionsPaging(Page<WorkflowDefinitionLog> page,
-                                                                      @Param("code") long code,
-                                                                      @Param("projectCode") long projectCode);
+    IPage<WorkflowDefinitionLog> queryWorkflowDefinitionVersionsPaging(Page<WorkflowDefinitionLog> page,
+                                                                       @Param("code") long code,
+                                                                       @Param("projectCode") long projectCode);
 
     /**
      * delete the certain workflow definition version by workflow definition id and version number
@@ -93,7 +90,7 @@ public interface WorkflowDefinitionLogMapper extends BaseMapper<WorkflowDefiniti
      * @param version version number
      * @return delete result
      */
-    int deleteByProcessDefinitionCodeAndVersion(@Param("code") long code, @Param("version") int version);
+    int deleteByWorkflowDefinitionCodeAndVersion(@Param("code") long code, @Param("version") int version);
 
-    void deleteByProcessDefinitionCode(@Param("workflowDefinitionCode") long workflowDefinitionCode);
+    void deleteByWorkflowDefinitionCode(@Param("workflowDefinitionCode") long workflowDefinitionCode);
 }

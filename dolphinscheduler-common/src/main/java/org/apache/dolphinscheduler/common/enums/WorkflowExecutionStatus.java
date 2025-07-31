@@ -20,10 +20,12 @@ package org.apache.dolphinscheduler.common.enums;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.Getter;
 import lombok.NonNull;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 
+@Getter
 public enum WorkflowExecutionStatus {
 
     SUBMITTED_SUCCESS(0, "submitted"),
@@ -35,7 +37,6 @@ public enum WorkflowExecutionStatus {
     FAILURE(6, "failure"),
     SUCCESS(7, "success"),
     SERIAL_WAIT(14, "serial wait"),
-    WAIT_TO_RUN(17, "wait to run"),
     FAILOVER(18, "failover");
 
     private static final Map<Integer, WorkflowExecutionStatus> CODE_MAP = new HashMap<>();
@@ -50,8 +51,7 @@ public enum WorkflowExecutionStatus {
             RUNNING_EXECUTION.getCode(),
             READY_PAUSE.getCode(),
             READY_STOP.getCode(),
-            SERIAL_WAIT.getCode(),
-            WAIT_TO_RUN.getCode()
+            SERIAL_WAIT.getCode()
     };
 
     static {
@@ -80,12 +80,11 @@ public enum WorkflowExecutionStatus {
         return this == RUNNING_EXECUTION
                 || this == READY_PAUSE
                 || this == READY_STOP
-                || this == SERIAL_WAIT
-                || this == WAIT_TO_RUN;
+                || this == SERIAL_WAIT;
     }
 
     public boolean canDirectStopInDB() {
-        return this == SERIAL_WAIT || this == WAIT_TO_RUN;
+        return this == SERIAL_WAIT;
     }
 
     public boolean canPause() {
@@ -94,8 +93,23 @@ public enum WorkflowExecutionStatus {
                 || this == SERIAL_WAIT;
     }
 
+    /**
+     * status can be take over on sub-workflow
+     * @return bool
+     */
+    public boolean canTakeover() {
+        return this == RUNNING_EXECUTION
+                || this == READY_PAUSE
+                || this == PAUSE
+                || this == READY_STOP
+                || this == STOP
+                || this == FAILURE
+                || this == SUCCESS
+                || this == FAILOVER;
+    }
+
     public boolean canDirectPauseInDB() {
-        return this == SERIAL_WAIT || this == WAIT_TO_RUN;
+        return this == SERIAL_WAIT;
     }
 
     public boolean isFinished() {
@@ -143,14 +157,6 @@ public enum WorkflowExecutionStatus {
     WorkflowExecutionStatus(int code, String desc) {
         this.code = code;
         this.desc = desc;
-    }
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getDesc() {
-        return desc;
     }
 
     @Override

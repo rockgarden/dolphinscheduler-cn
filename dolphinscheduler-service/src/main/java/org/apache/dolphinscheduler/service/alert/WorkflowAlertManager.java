@@ -17,29 +17,23 @@
 
 package org.apache.dolphinscheduler.service.alert;
 
-import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AlertType;
 import org.apache.dolphinscheduler.common.enums.CommandType;
 import org.apache.dolphinscheduler.common.enums.Flag;
 import org.apache.dolphinscheduler.common.enums.WarningType;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
-import org.apache.dolphinscheduler.common.utils.PropertyUtils;
 import org.apache.dolphinscheduler.dao.AlertDao;
 import org.apache.dolphinscheduler.dao.entity.Alert;
-import org.apache.dolphinscheduler.dao.entity.DqExecuteResult;
-import org.apache.dolphinscheduler.dao.entity.DqExecuteResultAlertContent;
+import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
-import org.apache.dolphinscheduler.dao.entity.TaskAlertContent;
 import org.apache.dolphinscheduler.dao.entity.TaskInstance;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.entity.WorkflowAlertContent;
 import org.apache.dolphinscheduler.dao.entity.WorkflowDefinitionLog;
 import org.apache.dolphinscheduler.dao.entity.WorkflowInstance;
-import org.apache.dolphinscheduler.dao.mapper.UserMapper;
-import org.apache.dolphinscheduler.dao.mapper.WorkflowDefinitionLogMapper;
-import org.apache.dolphinscheduler.plugin.task.api.enums.dp.DqTaskState;
-
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.dolphinscheduler.dao.repository.ProjectDao;
+import org.apache.dolphinscheduler.dao.repository.UserDao;
+import org.apache.dolphinscheduler.dao.repository.WorkflowDefinitionLogDao;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -54,20 +48,20 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class WorkflowAlertManager {
 
-    /**
-     * alert dao
-     */
     @Autowired
     private AlertDao alertDao;
 
     @Autowired
-    private WorkflowDefinitionLogMapper workflowDefinitionLogMapper;
+    private WorkflowDefinitionLogDao workflowDefinitionLogDao;
 
     @Autowired
-    private UserMapper userMapper;
+    private UserDao userDao;
+
+    @Autowired
+    private ProjectDao projectDao;
 
     /**
-     * command type convert chinese
+     * convert command type to human-readable name
      *
      * @param commandType command type
      * @return command name
@@ -103,73 +97,41 @@ public class WorkflowAlertManager {
      * get workflow instance content
      *
      * @param workflowInstance workflow instance
-     * @param taskInstances task instance list
      * @return workflow instance format content
      */
     public String getContentWorkflowInstance(WorkflowInstance workflowInstance,
-                                             List<TaskInstance> taskInstances,
-                                             ProjectUser projectUser) {
+                                             Project project) {
 
-        String res = "";
-        WorkflowDefinitionLog workflowDefinitionLog = workflowDefinitionLogMapper
-                .queryByDefinitionCodeAndVersion(workflowInstance.getProcessDefinitionCode(),
-                        workflowInstance.getProcessDefinitionVersion());
+        String res;
+        WorkflowDefinitionLog workflowDefinitionLog = workflowDefinitionLogDao
+                .queryByDefinitionCodeAndVersion(workflowInstance.getWorkflowDefinitionCode(),
+                        workflowInstance.getWorkflowDefinitionVersion());
 
         String modifyBy = "";
         if (workflowDefinitionLog != null) {
-            User operator = userMapper.selectById(workflowDefinitionLog.getOperator());
+            User operator = userDao.queryById(workflowDefinitionLog.getOperator());
             modifyBy = operator == null ? "" : operator.getUserName();
         }
 
-        if (workflowInstance.getState().isSuccess()) {
-            List<WorkflowAlertContent> successTaskList = new ArrayList<>(1);
-            WorkflowAlertContent workflowAlertContent = WorkflowAlertContent.builder()
-                    .projectCode(projectUser.getProjectCode())
-                    .projectName(projectUser.getProjectName())
-                    .owner(projectUser.getUserName())
-                    .processId(workflowInstance.getId())
-                    .processDefinitionCode(workflowInstance.getProcessDefinitionCode())
-                    .processName(workflowInstance.getName())
-                    .processType(workflowInstance.getCommandType())
-                    .processState(workflowInstance.getState())
-                    .modifyBy(modifyBy)
-                    .recovery(workflowInstance.getRecovery())
-                    .runTimes(workflowInstance.getRunTimes())
-                    .processStartTime(workflowInstance.getStartTime())
-                    .processEndTime(workflowInstance.getEndTime())
-                    .processHost(workflowInstance.getHost())
-                    .build();
-            successTaskList.add(workflowAlertContent);
-            res = JSONUtils.toJsonString(successTaskList);
-        } else if (workflowInstance.getState().isFailure()) {
-
-            List<WorkflowAlertContent> failedTaskList = new ArrayList<>();
-            for (TaskInstance task : taskInstances) {
-                if (task.getState().isSuccess()) {
-                    continue;
-                }
-                WorkflowAlertContent workflowAlertContent = WorkflowAlertContent.builder()
-                        .projectCode(projectUser.getProjectCode())
-                        .projectName(projectUser.getProjectName())
-                        .owner(projectUser.getUserName())
-                        .processId(workflowInstance.getId())
-                        .processDefinitionCode(workflowInstance.getProcessDefinitionCode())
-                        .processName(workflowInstance.getName())
-                        .modifyBy(modifyBy)
-                        .taskCode(task.getTaskCode())
-                        .taskName(task.getName())
-                        .taskType(task.getTaskType())
-                        .taskState(task.getState())
-                        .taskStartTime(task.getStartTime())
-                        .taskEndTime(task.getEndTime())
-                        .taskHost(task.getHost())
-                        .taskPriority(task.getTaskInstancePriority().getDescp())
-                        .logPath(task.getLogPath())
-                        .build();
-                failedTaskList.add(workflowAlertContent);
-            }
-            res = JSONUtils.toJsonString(failedTaskList);
-        }
+        List<WorkflowAlertContent> successTaskList = new ArrayList<>(1);
+        WorkflowAlertContent workflowAlertContent = WorkflowAlertContent.builder()
+                .projectCode(project.getCode())
+                .projectName(project.getName())
+                .owner(project.getUserName())
+                .workflowInstanceId(workflowInstance.getId())
+                .workflowDefinitionCode(workflowInstance.getWorkflowDefinitionCode())
+                .workflowInstanceName(workflowInstance.getName())
+                .commandType(workflowInstance.getCommandType())
+                .workflowExecutionStatus(workflowInstance.getState())
+                .modifyBy(modifyBy)
+                .recovery(workflowInstance.getRecovery())
+                .runTimes(workflowInstance.getRunTimes())
+                .workflowStartTime(workflowInstance.getStartTime())
+                .workflowEndTime(workflowInstance.getEndTime())
+                .workflowHost(workflowInstance.getHost())
+                .build();
+        successTaskList.add(workflowAlertContent);
+        res = JSONUtils.toJsonString(successTaskList);
 
         return res;
     }
@@ -185,20 +147,20 @@ public class WorkflowAlertManager {
 
         List<WorkflowAlertContent> toleranceTaskInstanceList = new ArrayList<>();
 
-        WorkflowDefinitionLog workflowDefinitionLog = workflowDefinitionLogMapper
-                .queryByDefinitionCodeAndVersion(workflowInstance.getProcessDefinitionCode(),
-                        workflowInstance.getProcessDefinitionVersion());
+        WorkflowDefinitionLog workflowDefinitionLog = workflowDefinitionLogDao
+                .queryByDefinitionCodeAndVersion(workflowInstance.getWorkflowDefinitionCode(),
+                        workflowInstance.getWorkflowDefinitionVersion());
         String modifyBy = "";
         if (workflowDefinitionLog != null) {
-            User operator = userMapper.selectById(workflowDefinitionLog.getOperator());
+            User operator = userDao.queryById(workflowDefinitionLog.getOperator());
             modifyBy = operator == null ? "" : operator.getUserName();
         }
 
         for (TaskInstance taskInstance : toleranceTaskList) {
             WorkflowAlertContent workflowAlertContent = WorkflowAlertContent.builder()
-                    .processId(workflowInstance.getId())
-                    .processDefinitionCode(workflowInstance.getProcessDefinitionCode())
-                    .processName(workflowInstance.getName())
+                    .workflowInstanceId(workflowInstance.getId())
+                    .workflowDefinitionCode(workflowInstance.getWorkflowDefinitionCode())
+                    .workflowInstanceName(workflowInstance.getName())
                     .modifyBy(modifyBy)
                     .taskCode(taskInstance.getTaskCode())
                     .taskName(taskInstance.getName())
@@ -240,26 +202,25 @@ public class WorkflowAlertManager {
      * send workflow instance alert
      *
      * @param workflowInstance workflow instance
-     * @param taskInstances task instance list
      */
-    public void sendAlertWorkflowInstance(WorkflowInstance workflowInstance,
-                                          List<TaskInstance> taskInstances,
-                                          ProjectUser projectUser) {
+    public void sendAlertWorkflowInstance(WorkflowInstance workflowInstance) {
         if (!isNeedToSendWarning(workflowInstance)) {
             return;
         }
+        Project project = projectDao.queryByCode(workflowInstance.getProjectCode());
+
         Alert alert = new Alert();
         String cmdName = getCommandCnName(workflowInstance.getCommandType());
         String success = workflowInstance.getState().isSuccess() ? "success" : "failed";
         alert.setTitle(cmdName + " " + success);
         alert.setWarningType(workflowInstance.getState().isSuccess() ? WarningType.SUCCESS : WarningType.FAILURE);
-        String content = getContentWorkflowInstance(workflowInstance, taskInstances, projectUser);
+        String content = getContentWorkflowInstance(workflowInstance, project);
         alert.setContent(content);
         alert.setAlertGroupId(workflowInstance.getWarningGroupId());
         alert.setCreateTime(new Date());
-        alert.setProjectCode(projectUser.getProjectCode());
-        alert.setProcessDefinitionCode(workflowInstance.getProcessDefinitionCode());
-        alert.setProcessInstanceId(workflowInstance.getId());
+        alert.setProjectCode(workflowInstance.getProjectCode());
+        alert.setWorkflowDefinitionCode(workflowInstance.getWorkflowDefinitionCode());
+        alert.setWorkflowInstanceId(workflowInstance.getId());
         alert.setAlertType(workflowInstance.getState().isSuccess() ? AlertType.WORKFLOW_INSTANCE_SUCCESS
                 : AlertType.WORKFLOW_INSTANCE_FAILURE);
         alertDao.addAlert(alert);
@@ -272,7 +233,7 @@ public class WorkflowAlertManager {
      * @return
      */
     public boolean isNeedToSendWarning(WorkflowInstance workflowInstance) {
-        if (Flag.YES == workflowInstance.getIsSubProcess()) {
+        if (Flag.YES == workflowInstance.getIsSubWorkflow()) {
             return false;
         }
         boolean sendWarning = false;
@@ -298,186 +259,9 @@ public class WorkflowAlertManager {
         return sendWarning;
     }
 
-    /**
-     * Send a close alert event, if the workflowInstance has sent alert before, then will insert a closed event.
-     *
-     * @param workflowInstance success workflow instance
-     */
-    public void closeAlert(WorkflowInstance workflowInstance) {
-        if (!PropertyUtils.getBoolean(Constants.AUTO_CLOSE_ALERT, false)) {
-            return;
-        }
-        List<Alert> alerts = alertDao.listAlerts(workflowInstance.getId());
-        if (CollectionUtils.isEmpty(alerts)) {
-            // no need to close alert
-            return;
-        }
-
-        Alert alert = new Alert();
-        alert.setAlertGroupId(workflowInstance.getWarningGroupId());
-        alert.setUpdateTime(new Date());
-        alert.setCreateTime(new Date());
-        alert.setProjectCode(workflowInstance.getWorkflowDefinition().getProjectCode());
-        alert.setProcessDefinitionCode(workflowInstance.getProcessDefinitionCode());
-        alert.setProcessInstanceId(workflowInstance.getId());
-        alert.setAlertType(AlertType.CLOSE_ALERT);
-        alertDao.addAlert(alert);
-    }
-
-    /**
-     * send workflow timeout alert
-     *
-     * @param workflowInstance workflow instance
-     * @param projectUser     projectUser
-     */
-    public void sendWorkflowTimeoutAlert(WorkflowInstance workflowInstance, ProjectUser projectUser) {
-        alertDao.sendProcessTimeoutAlert(workflowInstance, projectUser);
-    }
-
-    /**
-     * send data quality task alert
-     */
-    public void sendDataQualityTaskExecuteResultAlert(DqExecuteResult result, WorkflowInstance workflowInstance) {
-        Alert alert = new Alert();
-        String state = DqTaskState.of(result.getState()).getDescription();
-        alert.setTitle("DataQualityResult [" + result.getTaskName() + "] " + state);
-        String content = getDataQualityAlterContent(result);
-        alert.setContent(content);
-        alert.setAlertGroupId(workflowInstance.getWarningGroupId());
-        alert.setCreateTime(new Date());
-        alert.setProjectCode(result.getProjectCode());
-        alert.setProcessDefinitionCode(workflowInstance.getProcessDefinitionCode());
-        alert.setProcessInstanceId(workflowInstance.getId());
-        // might need to change to data quality status
-        alert.setAlertType(workflowInstance.getState().isSuccess() ? AlertType.WORKFLOW_INSTANCE_SUCCESS
-                : AlertType.WORKFLOW_INSTANCE_FAILURE);
-        alertDao.addAlert(alert);
-    }
-
-    /**
-     * send data quality task error alert
-     */
-    public void sendTaskErrorAlert(TaskInstance taskInstance, WorkflowInstance workflowInstance) {
-        Alert alert = new Alert();
-        alert.setTitle("Task [" + taskInstance.getName() + "] Failure Warning");
-        String content = getTaskAlterContent(taskInstance);
-        alert.setContent(content);
-        alert.setAlertGroupId(workflowInstance.getWarningGroupId());
-        alert.setCreateTime(new Date());
-        alert.setProcessDefinitionCode(workflowInstance.getProcessDefinitionCode());
-        alert.setProcessInstanceId(workflowInstance.getId());
-        alert.setAlertType(AlertType.TASK_FAILURE);
-        alertDao.addAlert(alert);
-    }
-
-    /**
-     * getDataQualityAlterContent
-     * @param result DqExecuteResult
-     * @return String String
-     */
-    public String getDataQualityAlterContent(DqExecuteResult result) {
-
-        DqExecuteResultAlertContent content = DqExecuteResultAlertContent.newBuilder()
-                .processDefinitionId(result.getProcessDefinitionId())
-                .processDefinitionName(result.getProcessDefinitionName())
-                .processInstanceId(result.getProcessInstanceId())
-                .processInstanceName(result.getProcessInstanceName())
-                .taskInstanceId(result.getTaskInstanceId())
-                .taskName(result.getTaskName())
-                .ruleType(result.getRuleType())
-                .ruleName(result.getRuleName())
-                .statisticsValue(result.getStatisticsValue())
-                .comparisonValue(result.getComparisonValue())
-                .checkType(result.getCheckType())
-                .threshold(result.getThreshold())
-                .operator(result.getOperator())
-                .failureStrategy(result.getFailureStrategy())
-                .userId(result.getUserId())
-                .userName(result.getUserName())
-                .state(result.getState())
-                .errorDataPath(result.getErrorOutputPath())
-                .build();
-
-        return JSONUtils.toJsonString(content);
-    }
-
-    /**
-     * getTaskAlterContent
-     * @param taskInstance TaskInstance
-     * @return String String
-     */
-    public String getTaskAlterContent(TaskInstance taskInstance) {
-
-        TaskAlertContent content = TaskAlertContent.builder()
-                .processInstanceName(taskInstance.getProcessInstanceName())
-                .processInstanceId(taskInstance.getProcessInstanceId())
-                .taskInstanceId(taskInstance.getId())
-                .taskName(taskInstance.getName())
-                .taskType(taskInstance.getTaskType())
-                .state(taskInstance.getState())
-                .startTime(taskInstance.getStartTime())
-                .endTime(taskInstance.getEndTime())
-                .host(taskInstance.getHost())
-                .taskPriority(taskInstance.getTaskInstancePriority().getDescp())
-                .logPath(taskInstance.getLogPath())
-                .build();
-
-        return JSONUtils.toJsonString(content);
-    }
-
     public void sendTaskTimeoutAlert(WorkflowInstance workflowInstance,
                                      TaskInstance taskInstance,
                                      ProjectUser projectUser) {
         alertDao.sendTaskTimeoutAlert(workflowInstance, taskInstance, projectUser);
-    }
-
-    /**
-     *
-     * check node type and workflow blocking flag, then insert a block record into db
-     *
-     * @param workflowInstance workflow instance
-     * @param projectUser the project owner
-     */
-    public void sendWorkflowBlockingAlert(WorkflowInstance workflowInstance,
-                                          ProjectUser projectUser) {
-        Alert alert = new Alert();
-        String cmdName = getCommandCnName(workflowInstance.getCommandType());
-        List<WorkflowAlertContent> blockingNodeList = new ArrayList<>(1);
-
-        WorkflowDefinitionLog workflowDefinitionLog = workflowDefinitionLogMapper
-                .queryByDefinitionCodeAndVersion(workflowInstance.getProcessDefinitionCode(),
-                        workflowInstance.getProcessDefinitionVersion());
-
-        String modifyBy = "";
-        if (workflowDefinitionLog != null) {
-            User operator = userMapper.selectById(workflowDefinitionLog.getOperator());
-            modifyBy = operator == null ? "" : operator.getUserName();
-        }
-
-        WorkflowAlertContent workflowAlertContent = WorkflowAlertContent.builder()
-                .projectCode(projectUser.getProjectCode())
-                .projectName(projectUser.getProjectName())
-                .owner(projectUser.getUserName())
-                .processId(workflowInstance.getId())
-                .processName(workflowInstance.getName())
-                .processType(workflowInstance.getCommandType())
-                .processState(workflowInstance.getState())
-                .modifyBy(modifyBy)
-                .runTimes(workflowInstance.getRunTimes())
-                .processStartTime(workflowInstance.getStartTime())
-                .processEndTime(workflowInstance.getEndTime())
-                .processHost(workflowInstance.getHost())
-                .build();
-        blockingNodeList.add(workflowAlertContent);
-        String content = JSONUtils.toJsonString(blockingNodeList);
-        alert.setTitle(cmdName + " Blocked");
-        alert.setContent(content);
-        alert.setAlertGroupId(workflowInstance.getWarningGroupId());
-        alert.setCreateTime(new Date());
-        alert.setProjectCode(projectUser.getProjectCode());
-        alert.setProcessDefinitionCode(workflowInstance.getProcessDefinitionCode());
-        alert.setProcessInstanceId(workflowInstance.getId());
-        alert.setAlertType(AlertType.WORKFLOW_INSTANCE_BLOCKED);
-        alertDao.addAlert(alert);
     }
 }

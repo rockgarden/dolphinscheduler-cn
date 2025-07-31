@@ -122,7 +122,6 @@ public class BackfillWorkflowExecutorDelegate implements IExecutorDelegate<Backf
                 .startNodes(backfillWorkflowDTO.getStartNodes())
                 .failureStrategy(backfillWorkflowDTO.getFailureStrategy())
                 .taskDependType(backfillWorkflowDTO.getTaskDependType())
-                .execType(backfillWorkflowDTO.getExecType())
                 .warningType(backfillWorkflowDTO.getWarningType())
                 .warningGroupId(backfillWorkflowDTO.getWarningGroupId())
                 .workflowInstancePriority(backfillWorkflowDTO.getWorkflowInstancePriority())
@@ -131,7 +130,6 @@ public class BackfillWorkflowExecutorDelegate implements IExecutorDelegate<Backf
                 .environmentCode(backfillWorkflowDTO.getEnvironmentCode())
                 .startParamList(backfillWorkflowDTO.getStartParamList())
                 .dryRun(backfillWorkflowDTO.getDryRun())
-                .testFlag(backfillWorkflowDTO.getTestFlag())
                 .build();
 
         final WorkflowBackfillTriggerResponse backfillTriggerResponse = Clients

@@ -17,7 +17,6 @@
 
 package org.apache.dolphinscheduler.service.subworkflow;
 
-import org.apache.dolphinscheduler.common.enums.WorkflowExecutionStatus;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.RelationSubWorkflow;
 import org.apache.dolphinscheduler.dao.entity.WorkflowDefinitionLog;
@@ -51,7 +50,7 @@ public class SubWorkflowServiceImpl implements SubWorkflowService {
     @Override
     public List<WorkflowInstance> getAllDynamicSubWorkflow(long processInstanceId, long taskCode) {
         List<RelationSubWorkflow> relationSubWorkflows =
-                relationSubWorkflowMapper.queryAllSubProcessInstance(processInstanceId, taskCode);
+                relationSubWorkflowMapper.queryAllSubWorkflowInstance(processInstanceId, taskCode);
         List<Long> allSubProcessInstanceId = relationSubWorkflows.stream()
                 .map(RelationSubWorkflow::getSubWorkflowInstanceId).collect(Collectors.toList());
 
@@ -85,13 +84,6 @@ public class SubWorkflowServiceImpl implements SubWorkflowService {
     }
 
     @Override
-    public List<WorkflowInstance> filterWaitToRunProcessInstances(List<WorkflowInstance> workflowInstanceList) {
-        return workflowInstanceList.stream()
-                .filter(subProcessInstance -> subProcessInstance.getState().equals(WorkflowExecutionStatus.WAIT_TO_RUN))
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public List<WorkflowInstance> filterFailedProcessInstances(List<WorkflowInstance> workflowInstanceList) {
         return workflowInstanceList.stream()
                 .filter(subProcessInstance -> subProcessInstance.getState().isFailure()).collect(Collectors.toList());
@@ -103,8 +95,8 @@ public class SubWorkflowServiceImpl implements SubWorkflowService {
                 new ArrayList<>(JSONUtils.toList(workflowInstance.getVarPool(), Property.class));
 
         WorkflowDefinitionLog processDefinition = workflowDefinitionLogMapper
-                .queryByDefinitionCodeAndVersion(workflowInstance.getProcessDefinitionCode(),
-                        workflowInstance.getProcessDefinitionVersion());
+                .queryByDefinitionCodeAndVersion(workflowInstance.getWorkflowDefinitionCode(),
+                        workflowInstance.getWorkflowDefinitionVersion());
         List<Property> globalParamList = JSONUtils.toList(processDefinition.getGlobalParams(), Property.class);
 
         Set<String> ouputParamSet = outputParamList.stream().map(Property::getProp).collect(Collectors.toSet());

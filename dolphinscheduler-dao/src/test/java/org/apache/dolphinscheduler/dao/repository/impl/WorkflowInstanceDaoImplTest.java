@@ -64,9 +64,7 @@ class WorkflowInstanceDaoImplTest extends BaseDaoTest {
                 WorkflowExecutionStatus.READY_STOP));
         workflowInstanceDao.insert(createWorkflowInstance(workflowDefinitionCode, workflowDefinitionVersion,
                 WorkflowExecutionStatus.SERIAL_WAIT));
-        workflowInstanceDao.insert(createWorkflowInstance(workflowDefinitionCode, workflowDefinitionVersion,
-                WorkflowExecutionStatus.WAIT_TO_RUN));
-        assertEquals(5, workflowInstanceDao
+        assertEquals(4, workflowInstanceDao
                 .queryByWorkflowCodeVersionStatus(workflowDefinitionCode, workflowDefinitionVersion, status).size());
     }
 
@@ -121,8 +119,8 @@ class WorkflowInstanceDaoImplTest extends BaseDaoTest {
                                                     WorkflowExecutionStatus status) {
         WorkflowInstance workflowInstance = new WorkflowInstance();
         workflowInstance.setName("WorkflowInstance" + System.currentTimeMillis());
-        workflowInstance.setProcessDefinitionCode(workflowDefinitionCode);
-        workflowInstance.setProcessDefinitionVersion(workflowDefinitionVersion);
+        workflowInstance.setWorkflowDefinitionCode(workflowDefinitionCode);
+        workflowInstance.setWorkflowDefinitionVersion(workflowDefinitionVersion);
         workflowInstance.setState(status);
         return workflowInstance;
     }

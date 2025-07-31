@@ -18,12 +18,12 @@
 package org.apache.dolphinscheduler.plugin.storage.s3;
 
 import org.apache.dolphinscheduler.authentication.aws.AmazonS3ClientFactory;
-import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.utils.FileUtils;
 import org.apache.dolphinscheduler.plugin.storage.api.AbstractStorageOperator;
 import org.apache.dolphinscheduler.plugin.storage.api.ResourceMetadata;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageEntity;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageOperator;
+import org.apache.dolphinscheduler.plugin.storage.api.constants.StorageConstants;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -75,7 +75,7 @@ public class S3StorageOperator extends AbstractStorageOperator implements Closea
     public String getStorageBaseDirectory() {
         // All directory should end with File.separator
         if (resourceBaseAbsolutePath.startsWith("/")) {
-            log.warn("{} -> {} should not start with / in s3", Constants.RESOURCE_UPLOAD_PATH,
+            log.warn("{} -> {} should not start with / in s3", StorageConstants.RESOURCE_UPLOAD_PATH,
                     resourceBaseAbsolutePath);
             return resourceBaseAbsolutePath.substring(1);
         }
@@ -113,7 +113,7 @@ public class S3StorageOperator extends AbstractStorageOperator implements Closea
         if (dstFile.isDirectory()) {
             Files.delete(dstFile.toPath());
         } else {
-            FileUtils.createDirectoryWith755(dstFile.getParentFile().toPath());
+            FileUtils.createDirectoryWithPermission(dstFile.getParentFile().toPath(), FileUtils.PERMISSION_755);
         }
         S3Object o = s3Client.getObject(bucketName, srcFilePath);
         try (
@@ -294,6 +294,7 @@ public class S3StorageOperator extends AbstractStorageOperator implements Closea
         entity.setDirectory(resourceMetaData.isDirectory());
         entity.setType(resourceMetaData.getResourceType());
         entity.setSize(object.getObjectMetadata().getContentLength());
+        entity.setRelativePath(resourceMetaData.getResourceRelativePath());
         entity.setCreateTime(object.getObjectMetadata().getLastModified());
         entity.setUpdateTime(object.getObjectMetadata().getLastModified());
         return entity;

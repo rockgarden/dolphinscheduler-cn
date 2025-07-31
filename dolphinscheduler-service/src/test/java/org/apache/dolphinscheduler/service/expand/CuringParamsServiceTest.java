@@ -20,6 +20,7 @@ package org.apache.dolphinscheduler.service.expand;
 import org.apache.dolphinscheduler.common.enums.CommandType;
 import org.apache.dolphinscheduler.common.utils.DateUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
+import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.TaskDefinition;
 import org.apache.dolphinscheduler.dao.entity.TaskInstance;
 import org.apache.dolphinscheduler.dao.entity.WorkflowDefinition;
@@ -31,7 +32,7 @@ import org.apache.dolphinscheduler.plugin.task.api.enums.DataType;
 import org.apache.dolphinscheduler.plugin.task.api.enums.Direct;
 import org.apache.dolphinscheduler.plugin.task.api.model.Property;
 import org.apache.dolphinscheduler.plugin.task.api.parameters.AbstractParameters;
-import org.apache.dolphinscheduler.plugin.task.api.parameters.SubProcessParameters;
+import org.apache.dolphinscheduler.plugin.task.api.parameters.SubWorkflowParameters;
 
 import org.apache.commons.collections4.MapUtils;
 
@@ -65,13 +66,7 @@ public class CuringParamsServiceTest {
     private CuringParamsServiceImpl dolphinSchedulerCuringGlobalParams;
 
     @Mock
-    private TimePlaceholderResolverExpandService timePlaceholderResolverExpandService;
-
-    @Mock
     private ProjectParameterMapper projectParameterMapper;
-
-    @InjectMocks
-    private TimePlaceholderResolverExpandServiceImpl timePlaceholderResolverExpandServiceImpl;
 
     private final Map<String, String> globalParamMap = new HashMap<>();
     private final Map<String, Property> paramMap = new HashMap<>();
@@ -88,18 +83,6 @@ public class CuringParamsServiceTest {
                 .thenReturn("2022-06-26");
         String result = curingGlobalParamsService.convertParameterPlaceholders(placeHolderName, paramMap);
         Assertions.assertNotNull(result);
-    }
-
-    @Test
-    public void testTimeFunctionNeedExpand() {
-        boolean result = curingGlobalParamsService.timeFunctionNeedExpand(placeHolderName);
-        Assertions.assertFalse(result);
-    }
-
-    @Test
-    public void testTimeFunctionExtension() {
-        String result = curingGlobalParamsService.timeFunctionExtension(1, "", placeHolderName);
-        Assertions.assertNull(result);
     }
 
     @Test
@@ -209,19 +192,24 @@ public class CuringParamsServiceTest {
         workflowDefinition.setProjectCode(3000001L);
         workflowDefinition.setCode(200001L);
 
-        workflowInstance.setProcessDefinitionCode(workflowDefinition.getCode());
+        Project project = new Project();
+        project.setName("ProjectName");
+        project.setCode(3000001L);
+
+        workflowInstance.setWorkflowDefinitionCode(workflowDefinition.getCode());
         workflowInstance.setProjectCode(workflowDefinition.getProjectCode());
         taskInstance.setTaskCode(taskDefinition.getCode());
         taskInstance.setTaskDefinitionVersion(taskDefinition.getVersion());
         taskInstance.setProjectCode(workflowDefinition.getProjectCode());
-        taskInstance.setProcessInstanceId(workflowInstance.getId());
+        taskInstance.setWorkflowInstanceId(workflowInstance.getId());
 
-        AbstractParameters parameters = new SubProcessParameters();
+        AbstractParameters parameters = new SubWorkflowParameters();
 
         Mockito.when(projectParameterMapper.queryByProjectCode(Mockito.anyLong())).thenReturn(Collections.emptyList());
 
         Map<String, Property> propertyMap =
-                dolphinSchedulerCuringGlobalParams.paramParsingPreparation(taskInstance, parameters, workflowInstance);
+                dolphinSchedulerCuringGlobalParams.paramParsingPreparation(taskInstance, parameters, workflowInstance,
+                        project.getName(), workflowDefinition.getName());
         Assertions.assertNotNull(propertyMap);
         Assertions.assertEquals(propertyMap.get(TaskConstants.PARAMETER_TASK_INSTANCE_ID).getValue(),
                 String.valueOf(taskInstance.getId()));

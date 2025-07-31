@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dolphinscheduler.api.dto.resources.visitor;
 
 import org.apache.dolphinscheduler.api.dto.resources.Directory;
@@ -125,6 +126,7 @@ public class ResourceTreeVisitor implements Visitor {
         tempResourceComponent.setName(resource.getFileName());
         tempResourceComponent.setFullName(resource.getFullName());
         tempResourceComponent.setType(resource.getType());
+        tempResourceComponent.setCurrentDir(resource.getRelativePath());
         return tempResourceComponent;
     }
 

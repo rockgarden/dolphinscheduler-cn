@@ -76,7 +76,6 @@ public class BackfillWorkflowRequestTransformer implements ITransformer<Workflow
                 .startParamList(
                         PropertyUtils.startParamsTransformPropertyList(workflowBackFillRequest.getStartParamList()))
                 .dryRun(workflowBackFillRequest.getDryRun())
-                .testFlag(workflowBackFillRequest.getTestFlag())
                 .triggerCode(CodeGenerateUtils.genCode())
                 .backfillParams(backfillParams)
                 .build();
@@ -105,7 +104,7 @@ public class BackfillWorkflowRequestTransformer implements ITransformer<Workflow
     @SneakyThrows
     private List<ZonedDateTime> parseBackfillDateList(WorkflowBackFillRequest workflowBackFillRequest) {
         final WorkflowBackFillRequest.BackfillTime backfillTime = workflowBackFillRequest.getBackfillTime();
-        List<Schedule> schedules = processService.queryReleaseSchedulerListByProcessDefinitionCode(
+        List<Schedule> schedules = processService.queryReleaseSchedulerListByWorkflowDefinitionCode(
                 workflowBackFillRequest.getWorkflowDefinitionCode());
 
         if (StringUtils.isNotEmpty(backfillTime.getComplementStartDate())

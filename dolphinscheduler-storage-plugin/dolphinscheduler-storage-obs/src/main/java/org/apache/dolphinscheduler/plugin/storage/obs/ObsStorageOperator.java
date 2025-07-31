@@ -17,12 +17,12 @@
 
 package org.apache.dolphinscheduler.plugin.storage.obs;
 
-import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.utils.FileUtils;
 import org.apache.dolphinscheduler.plugin.storage.api.AbstractStorageOperator;
 import org.apache.dolphinscheduler.plugin.storage.api.ResourceMetadata;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageEntity;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageOperator;
+import org.apache.dolphinscheduler.plugin.storage.api.constants.StorageConstants;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -81,7 +81,7 @@ public class ObsStorageOperator extends AbstractStorageOperator implements Close
     public String getStorageBaseDirectory() {
         // All directory should end with File.separator
         if (resourceBaseAbsolutePath.startsWith("/")) {
-            log.warn("{} -> {} should not start with / in obs", Constants.RESOURCE_UPLOAD_PATH,
+            log.warn("{} -> {} should not start with / in obs", StorageConstants.RESOURCE_UPLOAD_PATH,
                     resourceBaseAbsolutePath);
             return resourceBaseAbsolutePath.substring(1);
         }
@@ -111,7 +111,7 @@ public class ObsStorageOperator extends AbstractStorageOperator implements Close
         if (dstFile.isDirectory()) {
             Files.delete(dstFile.toPath());
         } else {
-            FileUtils.createDirectoryWith755(dstFile.getParentFile().toPath());
+            FileUtils.createDirectoryWithPermission(dstFile.getParentFile().toPath(), FileUtils.PERMISSION_755);
         }
         ObsObject obsObject = obsClient.getObject(bucketName, srcFilePath);
         try (
@@ -260,6 +260,7 @@ public class ObsStorageOperator extends AbstractStorageOperator implements Close
                 .type(resourceMetaData.getResourceType())
                 .isDirectory(StringUtils.isEmpty(fileExtension))
                 .size(metadata.getContentLength())
+                .relativePath(resourceMetaData.getResourceRelativePath())
                 .createTime(metadata.getLastModified())
                 .updateTime(metadata.getLastModified())
                 .build();

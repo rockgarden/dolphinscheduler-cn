@@ -45,9 +45,6 @@ import org.springframework.stereotype.Repository;
 
 import com.google.common.collect.Lists;
 
-/**
- * Task Definition DAO Implementation
- */
 @Repository
 @Slf4j
 public class TaskDefinitionDaoImpl extends BaseDao<TaskDefinition, TaskDefinitionMapper> implements TaskDefinitionDao {
@@ -66,15 +63,16 @@ public class TaskDefinitionDaoImpl extends BaseDao<TaskDefinition, TaskDefinitio
     }
 
     @Override
-    public List<TaskDefinition> getTaskDefinitionListByDefinition(long processDefinitionCode) {
-        WorkflowDefinition workflowDefinition = workflowDefinitionMapper.queryByCode(processDefinitionCode);
+    public List<TaskDefinition> getTaskDefinitionListByDefinition(long workflowDefinitionCode) {
+        WorkflowDefinition workflowDefinition = workflowDefinitionMapper.queryByCode(workflowDefinitionCode);
         if (workflowDefinition == null) {
-            log.error("Cannot find process definition, code: {}", processDefinitionCode);
+            log.error("Cannot find process definition, code: {}", workflowDefinitionCode);
             return Lists.newArrayList();
         }
 
-        List<WorkflowTaskRelationLog> processTaskRelations = workflowTaskRelationLogMapper.queryByProcessCodeAndVersion(
-                workflowDefinition.getCode(), workflowDefinition.getVersion());
+        List<WorkflowTaskRelationLog> processTaskRelations =
+                workflowTaskRelationLogMapper.queryByWorkflowCodeAndVersion(
+                        workflowDefinition.getCode(), workflowDefinition.getVersion());
         Set<TaskDefinition> taskDefinitionSet = processTaskRelations
                 .stream()
                 .filter(p -> p.getPostTaskCode() > 0)
@@ -119,4 +117,8 @@ public class TaskDefinitionDaoImpl extends BaseDao<TaskDefinition, TaskDefinitio
         return mybatisMapper.queryByCode(taskCode);
     }
 
+    @Override
+    public List<String> queryAllTaskDefinitionWorkerGroups(long projectCode) {
+        return mybatisMapper.queryAllTaskDefinitionWorkerGroups(projectCode);
+    }
 }

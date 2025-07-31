@@ -43,7 +43,7 @@ jobs:
       not-ignore: ${{ steps.filter.outputs.not-ignore }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@b2feaf19c27470162a626bd6fa8438ae5b263721
+      - uses: dorny/paths-filter@v3.0.2
         id: filter
         with:
           filters: |
@@ -62,6 +62,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: true
+      - name: Collect Workflow Telemetry
+        uses: ./.github/actions/workflow-telemetry-action
+        with:
+          comment_on_pr: false
       - name: Sanity Check
         uses: ./.github/actions/sanity-check
         with:
@@ -74,10 +78,10 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}-unit-test
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}-backend
           restore-keys: ${{ runner.os }}-maven-
       - name: Run Unit tests
-        run: ./mvnw clean verify -B -Dmaven.test.skip=false -Dspotless.skip=true -DskipUT=false
+        run: ./mvnw clean verify -B -Dmaven.test.skip=false -Dspotless.skip=true -DskipUT=false -Danalyze.skip=true
       - name: Upload coverage report to codecov
         run: CODECOV_TOKEN="09c2663f-b091-4258-8a47-c981827eb29a" bash <(curl -s https://codecov.io/bash)
 
@@ -100,10 +104,11 @@ jobs:
           -Dsonar.projectKey=apache-dolphinscheduler
           -Dsonar.login=e4058004bc6be89decf558ac819aa1ecbee57682
           -Dsonar.exclusions=dolphinscheduler-ui/src/**/i18n/locale/*.js,dolphinscheduler-microbench/src/**/*
-          -Dhttp.keepAlive=false 
-          -Dmaven.wagon.http.pool=false 
+          -Dhttp.keepAlive=false
+          -Dmaven.wagon.http.pool=false
           -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
           -DskipUT=true
+          -Danalyze.skip=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

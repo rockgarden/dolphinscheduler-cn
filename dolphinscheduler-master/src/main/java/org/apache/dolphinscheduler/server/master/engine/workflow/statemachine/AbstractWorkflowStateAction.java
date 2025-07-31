@@ -22,6 +22,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import org.apache.dolphinscheduler.common.enums.WorkflowExecutionStatus;
 import org.apache.dolphinscheduler.dao.entity.WorkflowInstance;
 import org.apache.dolphinscheduler.dao.repository.WorkflowInstanceDao;
+import org.apache.dolphinscheduler.plugin.task.api.utils.LogUtils;
 import org.apache.dolphinscheduler.server.master.engine.AbstractLifecycleEvent;
 import org.apache.dolphinscheduler.server.master.engine.WorkflowCacheRepository;
 import org.apache.dolphinscheduler.server.master.engine.WorkflowEventBus;
@@ -34,6 +35,7 @@ import org.apache.dolphinscheduler.server.master.engine.workflow.lifecycle.event
 import org.apache.dolphinscheduler.server.master.engine.workflow.lifecycle.event.WorkflowTopologyLogicalTransitionWithTaskFinishLifecycleEvent;
 import org.apache.dolphinscheduler.server.master.engine.workflow.runnable.IWorkflowExecutionRunnable;
 import org.apache.dolphinscheduler.server.master.utils.WorkflowInstanceUtils;
+import org.apache.dolphinscheduler.service.alert.WorkflowAlertManager;
 
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -59,6 +61,9 @@ public abstract class AbstractWorkflowStateAction implements IWorkflowStateActio
 
     @Autowired
     protected WorkflowEventBusCoordinator workflowEventBusCoordinator;
+
+    @Autowired
+    protected WorkflowAlertManager workflowAlertManager;
 
     /**
      * Try to trigger the tasks if the trigger condition is met.
@@ -90,8 +95,32 @@ public abstract class AbstractWorkflowStateAction implements IWorkflowStateActio
         }
     }
 
-    protected void onTaskFinish(final IWorkflowExecutionRunnable workflowExecutionRunnable,
-                                final ITaskExecutionRunnable taskExecutionRunnable) {
+    protected void killActiveTask(final IWorkflowExecutionRunnable workflowExecutionRunnable) {
+        try {
+            LogUtils.setWorkflowInstanceIdMDC(workflowExecutionRunnable.getId());
+            workflowExecutionRunnable
+                    .getWorkflowExecutionGraph()
+                    .getActiveTaskExecutionRunnable()
+                    .forEach(ITaskExecutionRunnable::kill);
+        } finally {
+            LogUtils.removeWorkflowInstanceIdMDC();
+        }
+    }
+
+    protected void pauseActiveTask(final IWorkflowExecutionRunnable workflowExecutionRunnable) {
+        try {
+            LogUtils.setWorkflowInstanceIdMDC(workflowExecutionRunnable.getId());
+            workflowExecutionRunnable
+                    .getWorkflowExecutionGraph()
+                    .getActiveTaskExecutionRunnable()
+                    .forEach(ITaskExecutionRunnable::pause);
+        } finally {
+            LogUtils.removeWorkflowInstanceIdMDC();
+        }
+    }
+
+    protected void tryToTriggerSuccessorsAfterTaskFinish(final IWorkflowExecutionRunnable workflowExecutionRunnable,
+                                                         final ITaskExecutionRunnable taskExecutionRunnable) {
         final IWorkflowExecutionGraph workflowExecutionGraph = workflowExecutionRunnable.getWorkflowExecutionGraph();
         if (workflowExecutionGraph.isEndOfTaskChain(taskExecutionRunnable)) {
             emitWorkflowFinishedEventIfApplicable(workflowExecutionRunnable);
@@ -106,7 +135,6 @@ public abstract class AbstractWorkflowStateAction implements IWorkflowStateActio
                                   final WorkflowExecutionStatus workflowExecutionStatus) {
         final WorkflowInstance workflowInstance = workflowExecutionRunnable.getWorkflowInstance();
         workflowInstance.setEndTime(new Date());
-        workflowInstance.setState(workflowExecutionStatus);
         transformWorkflowInstanceState(workflowExecutionRunnable, workflowExecutionStatus);
         workflowExecutionRunnable.getWorkflowEventBus()
                 .publish(WorkflowFinalizeLifecycleEvent.of(workflowExecutionRunnable));
@@ -166,6 +194,7 @@ public abstract class AbstractWorkflowStateAction implements IWorkflowStateActio
 
         workflowCacheRepository.remove(workflowExecutionRunnable.getId());
         workflowEventBusCoordinator.unRegisterWorkflowEventBus(workflowExecutionRunnable);
+        workflowAlertManager.sendAlertWorkflowInstance(workflowExecutionRunnable.getWorkflowInstance());
 
         log.info("Successfully finalize WorkflowExecuteRunnable: {}", workflowExecutionRunnable.getName());
     }
