@@ -55,7 +55,7 @@ MasterServer 服务启动时向 Zookeeper 注册临时节点，通过监听 Zook
 
 #### **WorkerServer**
 
-  WorkerServer 也采用分布式无中心设计理念，WorkerServer 主要负责任务的执行和提供日志服务。WorkerServer 服务启动时向 Zookeeper 注册临时节点，并维持心跳。
+WorkerServer 也采用分布式无中心设计理念，WorkerServer 主要负责任务的执行和提供日志服务。WorkerServer 服务启动时向 Zookeeper 注册临时节点，并维持心跳。
 
 ##### 该服务包含
 

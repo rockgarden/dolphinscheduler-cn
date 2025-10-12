@@ -25,8 +25,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://127.0.0.1:5432/dolphinscheduler
-    username: root
-    password: root
+    username: dolphinscheduler
+    password: dolphinscheduler
     hikari:
       connection-test-query: select 1
       pool-name: DolphinScheduler
@@ -94,8 +94,8 @@ master:
   # The number of workflow event bus fire worker used to fire the workflow event, default is 2*CPU core + 1.
   #  workflow-event-bus-fire-thread-count: 10
   # logic-task-config:
-    # The number of threads used to execute logic task.
-    # task-executor-thread-count: 10
+  # The number of threads used to execute logic task.
+  # task-executor-thread-count: 10
   max-heartbeat-interval: 10s
   server-load-protection:
     # If set true, will open master overload protection

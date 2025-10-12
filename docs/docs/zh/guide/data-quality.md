@@ -60,7 +60,6 @@
   ```sql
   SELECT COUNT(*) AS miss FROM ${src_table} WHERE (${src_field} is null or ${src_field} = '') AND (${src_filter})
   ```
-
 - 计算表总行数的SQL如下：
 
   ```sql

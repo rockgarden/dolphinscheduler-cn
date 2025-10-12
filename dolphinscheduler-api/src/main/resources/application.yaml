@@ -47,8 +47,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://127.0.0.1:5432/dolphinscheduler
-    username: root
-    password: root
+    username: dolphinscheduler
+    password: dolphinscheduler
     hikari:
       connection-test-query: select 1
       pool-name: DolphinScheduler
@@ -134,14 +134,15 @@ api:
   # global max request number per second
   # default tenant-level max request number
   traffic-control:
-      global-switch: false
-      max-global-qps-rate: 300
-      tenant-switch: false
-      default-tenant-qps-rate: 10
-        #customize-tenant-qps-rate:
-        # eg.
-      #tenant1: 11
-      #tenant2: 20
+    global-switch: false
+    max-global-qps-rate: 300
+    tenant-switch: false
+    default-tenant-qps-rate:
+      10
+      #customize-tenant-qps-rate:
+      # eg.
+    #tenant1: 11
+    #tenant2: 20
   python-gateway:
     # Weather enable python gateway server or not. The default value is false.
     enabled: false
@@ -229,7 +230,6 @@ casdoor:
   application-name: ""
   # Doplhinscheduler login url
   redirect-url: ""
-
 
 # Override by profile
 

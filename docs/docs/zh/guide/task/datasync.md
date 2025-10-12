@@ -61,3 +61,4 @@ resource.aws.secret.access.key=<YOUR AWS SECRET KEY>
 # Defines  AWS Region to use and is required
 resource.aws.region=<AWS REGION>
 ```
+
